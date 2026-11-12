@@ -1,0 +1,712 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP & A2A — Master IA</title>
+<link rel="stylesheet" href="node_modules/reveal.js/dist/reveal.css">
+<link rel="stylesheet" href="node_modules/reveal.js/dist/theme/white.css">
+<link rel="stylesheet" href="custom.css">
+</head>
+<body>
+<svg class="defs" aria-hidden="true"><defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#175bff"/></marker>
+<marker id="ahk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#101725"/></marker>
+</defs></svg>
+<div class="reveal"><div class="slides">
+
+<section class="cover" data-background-color="#175bff">
+<h1>MCP &amp; A2A<br>Connecter les systèmes agentiques</h1>
+<p>MASTER IA / LUCAS BLIN</p>
+<aside class="notes">Suite directe du cours « Architectures & patterns des systèmes agentiques ». Le cours précédent répondait à « comment organiser des agents » ; celui-ci répond à « comment les brancher sur le monde et entre eux ». Durée : environ 1 h 15 de cours puis 45 min de TP.</aside>
+</section>
+
+<section>
+<h3>Objectifs du cours</h3>
+<ul>
+<li><strong>Expliquer</strong> le problème d’intégration que MCP et A2A standardisent.</li>
+<li><strong>Décrire</strong> les rôles, les messages et le cycle de vie de chaque protocole.</li>
+<li><strong>Analyser</strong> leurs limites : sécurité, confiance, coût en contexte.</li>
+<li><strong>Choisir</strong> entre outil MCP et agent A2A pour un besoin donné.</li>
+<li><strong>Construire</strong> et tester un serveur MCP local.</li>
+</ul>
+<aside class="notes">Niveau visé : introduction, mais avec le vocabulaire exact des spécifications et un regard critique. Les étudiants doivent sortir capables de lire une trace JSON-RPC et de justifier un choix d’architecture.</aside>
+</section>
+
+<section>
+<h3>Plan</h3>
+<table>
+<thead><tr><th></th><th>Partie</th><th>Question traitée</th></tr></thead>
+<tbody>
+<tr><td>00</td><td>Le problème d’intégration</td><td>Pourquoi un protocole plutôt qu’une API de plus ?</td></tr>
+<tr><td>01</td><td>MCP</td><td>Comment une application IA accède-t-elle à des capacités externes ?</td></tr>
+<tr><td>02</td><td>A2A</td><td>Comment un agent délègue-t-il une tâche à un autre agent ?</td></tr>
+<tr><td>03</td><td>Choisir et combiner</td><td>Outil ou agent ? Quelles limites restent ouvertes ?</td></tr>
+<tr><td>04</td><td>TP</td><td>Écrire un serveur MCP et le tester sans LLM.</td></tr>
+</tbody>
+</table>
+<aside class="notes">Répartition indicative : 15 min pour le problème, 30 min pour MCP, 20 min pour A2A, 10 min pour la comparaison, 45 min de TP.</aside>
+</section>
+
+<section>
+<h3>Rappel : un agent appelle des outils</h3>
+<svg class="dg" viewBox="0 0 1180 410" role="img" aria-label="Diagramme de séquence du tool calling : l’utilisateur pose une question, l’application transmet la question et la description des outils au modèle, le modèle demande un appel, l’application exécute l’outil, renvoie le résultat au modèle puis la réponse à l’utilisateur.">
+<line class="life" x1="130" y1="46" x2="130" y2="410"/><line class="life" x1="440" y1="46" x2="440" y2="410"/><line class="life" x1="750" y1="46" x2="750" y2="410"/><line class="life" x1="1050" y1="46" x2="1050" y2="410"/>
+<rect class="soft" x="20" y="0" width="220" height="46"/><text class="d" x="130" y="23">Utilisateur</text>
+<rect class="blue" x="330" y="0" width="220" height="46"/><text x="440" y="23">Application</text>
+<rect class="ink" x="640" y="0" width="220" height="46"/><text x="750" y="23">Modèle LLM</text>
+<rect class="ink" x="940" y="0" width="220" height="46"/><text x="1050" y="23">Outil / API</text>
+<line class="e" x1="130" y1="92" x2="440" y2="92" marker-end="url(#ah)"/><text class="l" x="285" y="78">1 · question</text>
+<line class="e" x1="440" y1="138" x2="750" y2="138" marker-end="url(#ah)"/><text class="l" x="595" y="124">2 · question + description des outils</text>
+<line class="e r" x1="750" y1="184" x2="440" y2="184" marker-end="url(#ah)"/><text class="l" x="595" y="170">3 · demande d’appel : nom + arguments</text>
+<line class="e" x1="440" y1="230" x2="1050" y2="230" marker-end="url(#ah)"/><text class="l" x="900" y="216">4 · exécution</text>
+<line class="e r" x1="1050" y1="276" x2="440" y2="276" marker-end="url(#ah)"/><text class="l" x="900" y="262">5 · résultat</text>
+<line class="e" x1="440" y1="322" x2="750" y2="322" marker-end="url(#ah)"/><text class="l" x="595" y="308">6 · résultat de l’outil</text>
+<line class="e r" x1="750" y1="368" x2="440" y2="368" marker-end="url(#ah)"/><text class="l" x="595" y="354">7 · réponse finale</text>
+<line class="e r" x1="440" y1="398" x2="130" y2="398" marker-end="url(#ah)"/><text class="l" x="285" y="384">8 · réponse</text>
+</svg>
+<p class="caption">Le modèle ne fait que <strong>demander</strong> l’appel : c’est l’application qui exécute, contrôle les permissions et valide les arguments.</p>
+<aside class="notes">Rappel du cours précédent : un agent LLM = LLM + outils + mémoire + boucle. Les étapes 2 à 6 peuvent se répéter. Insister sur le point 3 : la sortie du modèle est une donnée structurée, jamais une exécution. Tout ce qui suit dans le cours standardise les flèches 2, 4 et 5.</aside>
+</section>
+
+<section>
+<h3>Le problème : N × M intégrations</h3>
+<svg class="dg" viewBox="0 0 1180 340" role="img" aria-label="À gauche, trois applications reliées chacune à trois services par neuf intégrations spécifiques. À droite, les mêmes applications et services reliés par un protocole commun : six implémentations.">
+<g>
+<line class="e k" x1="190" y1="45" x2="350" y2="45"/><line class="e k" x1="190" y1="45" x2="350" y2="135"/><line class="e k" x1="190" y1="45" x2="350" y2="225"/>
+<line class="e k" x1="190" y1="135" x2="350" y2="45"/><line class="e k" x1="190" y1="135" x2="350" y2="135"/><line class="e k" x1="190" y1="135" x2="350" y2="225"/>
+<line class="e k" x1="190" y1="225" x2="350" y2="45"/><line class="e k" x1="190" y1="225" x2="350" y2="135"/><line class="e k" x1="190" y1="225" x2="350" y2="225"/>
+<rect class="blue" x="0" y="20" width="190" height="50"/><text x="95" y="45">Assistant IDE</text>
+<rect class="blue" x="0" y="110" width="190" height="50"/><text x="95" y="135">Chatbot</text>
+<rect class="blue" x="0" y="200" width="190" height="50"/><text x="95" y="225">Agent métier</text>
+<rect class="ink" x="350" y="20" width="170" height="50"/><text x="435" y="45">Git</text>
+<rect class="ink" x="350" y="110" width="170" height="50"/><text x="435" y="135">Base SQL</text>
+<rect class="ink" x="350" y="200" width="170" height="50"/><text x="435" y="225">Tickets</text>
+<text class="l" x="260" y="290">Sans standard : N × M connecteurs spécifiques</text>
+</g>
+<g>
+<line class="e" x1="830" y1="45" x2="880" y2="45"/><line class="e" x1="830" y1="135" x2="880" y2="135"/><line class="e" x1="830" y1="225" x2="880" y2="225"/>
+<line class="e" x1="940" y1="45" x2="1010" y2="45"/><line class="e" x1="940" y1="135" x2="1010" y2="135"/><line class="e" x1="940" y1="225" x2="1010" y2="225"/>
+<rect class="blue" x="640" y="20" width="190" height="50"/><text x="735" y="45">Assistant IDE</text>
+<rect class="blue" x="640" y="110" width="190" height="50"/><text x="735" y="135">Chatbot</text>
+<rect class="blue" x="640" y="200" width="190" height="50"/><text x="735" y="225">Agent métier</text>
+<rect class="soft" x="880" y="20" width="60" height="230"/><text class="d" x="910" y="135" transform="rotate(-90 910 135)">protocole commun</text>
+<rect class="ink" x="1010" y="20" width="170" height="50"/><text x="1095" y="45">Git</text>
+<rect class="ink" x="1010" y="110" width="170" height="50"/><text x="1095" y="135">Base SQL</text>
+<rect class="ink" x="1010" y="200" width="170" height="50"/><text x="1095" y="225">Tickets</text>
+<text class="l" x="910" y="290">Avec un protocole : N + M implémentations</text>
+</g>
+</svg>
+<p class="caption">Même raisonnement que LSP pour les éditeurs de code : un contrat commun découple ceux qui consomment de ceux qui exposent.</p>
+<aside class="notes">Sans standard, chaque application réécrit pour chaque service le contrat, l’authentification, le format des résultats. Language Server Protocol (2016) a résolu le même problème entre éditeurs et langages ; MCP s’en inspire explicitement, jusqu’au choix de JSON-RPC. Question à poser à la salle : qu’est-ce qui, dans un connecteur, est réellement spécifique ?</aside>
+</section>
+
+<section>
+<h3>Framework, protocole, implémentation</h3>
+<div class="grid three">
+<div class="card"><h3>Framework</h3><p>Construit et orchestre les composants d’une application agentique.</p><p>Mastra, LangGraph, AutoGen.</p></div>
+<div class="card"><h3>Protocole</h3><p>Fixe les règles d’échange entre composants indépendants.</p><p>MCP, A2A.</p></div>
+<div class="card"><h3>Implémentation</h3><p>Réalise le protocole dans un langage donné.</p><p>SDK TypeScript, Python, Java…</p></div>
+</div>
+<p class="caption">Un protocole ne dit rien de l’orchestration interne : deux agents écrits avec des frameworks différents peuvent interopérer.</p>
+<aside class="notes">Confusion fréquente : « MCP ou LangGraph ? » n’a pas de sens, ce ne sont pas des objets de même nature. Les frameworks vus au cours précédent savent tous consommer des serveurs MCP ; plusieurs savent exposer un agent en A2A.</aside>
+</section>
+
+<section>
+<h3>D’où viennent ces protocoles ?</h3>
+<svg class="dg" viewBox="0 0 1180 150" role="img" aria-label="Frise chronologique : 1997 FIPA ACL, novembre 2024 publication de MCP par Anthropic, avril 2025 publication d’A2A par Google, 2025 gouvernance confiée à la Linux Foundation, mars 2026 A2A 1.0, juillet 2026 MCP révision 2026-07-28 sans état.">
+<line class="e k" x1="40" y1="60" x2="1140" y2="60"/>
+<rect class="ink" x="92" y="52" width="16" height="16"/><text class="l" x="100" y="26">1997</text><text class="m" x="100" y="94">FIPA ACL</text><text class="m" x="100" y="116">performatifs, ontologies</text>
+<rect class="blue" x="288" y="52" width="16" height="16"/><text class="l" x="296" y="26">nov. 2024</text><text class="m" x="296" y="94">MCP</text><text class="m" x="296" y="116">publié par Anthropic</text>
+<rect class="blue" x="484" y="52" width="16" height="16"/><text class="l" x="492" y="26">avr. 2025</text><text class="m" x="492" y="94">A2A</text><text class="m" x="492" y="116">publié par Google</text>
+<rect class="blue" x="680" y="52" width="16" height="16"/><text class="l" x="688" y="26">2025</text><text class="m" x="688" y="94">gouvernance ouverte</text><text class="m" x="688" y="116">Linux Foundation</text>
+<rect class="blue" x="876" y="52" width="16" height="16"/><text class="l" x="884" y="26">mars 2026</text><text class="m" x="884" y="94">A2A 1.0</text><text class="m" x="884" y="116">trois bindings</text>
+<rect class="blue" x="1072" y="52" width="16" height="16"/><text class="l" x="1080" y="26">juil. 2026</text><text class="m" x="1080" y="94">MCP 2026-07-28</text><text class="m" x="1080" y="116">protocole sans état</text>
+</svg>
+<ul class="medium">
+<li>Le besoin d’interopérabilité date des SMA classiques : seul l’encodage a changé.</li>
+<li>Les deux protocoles sont des standards ouverts, portés par une fondation et non par un éditeur.</li>
+<li>Ils évoluent vite : toujours citer la <strong>révision</strong> de la spécification utilisée.</li>
+</ul>
+<aside class="notes">Lien avec la slide « De FIPA ACL à MCP et A2A » du cours précédent. FIPA ACL exigeait des ontologies partagées ; ici le langage naturel et les schémas JSON jouent ce rôle. A2A a été confié à la Linux Foundation en juin 2025, MCP à l’Agentic AI Foundation (fonds de la Linux Foundation) en décembre 2025. Les dates de version sont à revérifier avant chaque séance.</aside>
+</section>
+
+<section>
+<h3>Deux axes d’intégration</h3>
+<svg class="dg" viewBox="0 0 1180 370" role="img" aria-label="Deux agents reliés horizontalement par A2A. Chaque agent est relié verticalement, par MCP, à ses propres outils : fichiers, base SQL et API métier pour l’agent A, recherche web et calcul pour l’agent B.">
+<line class="e flow" x1="450" y1="62" x2="730" y2="62" marker-end="url(#ah)"/><line class="e flow" x1="730" y1="80" x2="450" y2="80" marker-end="url(#ah)"/>
+<text class="l" x="590" y="40">A2A · horizontal</text><text class="m" x="590" y="104">délégation de tâches</text>
+<line class="e" x1="320" y1="112" x2="165" y2="290" marker-end="url(#ah)" marker-start="url(#ah)"/><line class="e" x1="320" y1="112" x2="335" y2="290" marker-end="url(#ah)" marker-start="url(#ah)"/><line class="e" x1="320" y1="112" x2="505" y2="290" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<line class="e" x1="860" y1="112" x2="775" y2="290" marker-end="url(#ah)" marker-start="url(#ah)"/><line class="e" x1="860" y1="112" x2="945" y2="290" marker-end="url(#ah)" marker-start="url(#ah)"/>
+<text class="l" x="140" y="200">MCP · vertical</text><text class="l" x="860" y="200">MCP · vertical</text>
+<rect class="blue" x="190" y="30" width="260" height="82"/><text x="320" y="60">Agent A</text><text class="s" x="320" y="86">LLM + boucle + mémoire</text>
+<rect class="ink" x="730" y="30" width="260" height="82"/><text x="860" y="60">Agent B</text><text class="s" x="860" y="86">autre équipe, autre framework</text>
+<rect class="soft" x="90" y="290" width="150" height="56"/><text class="d" x="165" y="318">Fichiers</text>
+<rect class="soft" x="260" y="290" width="150" height="56"/><text class="d" x="335" y="318">Base SQL</text>
+<rect class="soft" x="430" y="290" width="150" height="56"/><text class="d" x="505" y="318">API métier</text>
+<rect class="soft" x="690" y="290" width="170" height="56"/><text class="d" x="775" y="318">Recherche web</text>
+<rect class="soft" x="870" y="290" width="150" height="56"/><text class="d" x="945" y="318">Calcul</text>
+</svg>
+<p class="caption">« A2A connecte les agents entre eux ; MCP connecte chaque agent à ses propres outils. » — documentation A2A</p>
+<aside class="notes">C’est la carte mentale de tout le cours. MCP : relation asymétrique entre une application et une capacité qu’elle pilote. A2A : relation entre pairs autonomes, chacun gardant ses outils et sa logique privés. La frontière est parfois floue, on y revient en partie 3.</aside>
+</section>
+
+<section class="chapter" data-background-color="#175bff">
+<h2><span class="number">01</span>MCP<br>Accéder à des capacités</h2>
+<p>Model Context Protocol : relier une application IA à des outils, des données et des consignes.</p>
+<aside class="notes">Partie la plus longue, environ 30 min. Progression : architecture et rôles, primitives, contrat d’outil, cycle d’un appel et messages JSON-RPC, évolution de la spécification, transports, puis sécurité et limites. Rappeler la carte des deux axes : on traite ici l’axe vertical.</aside>
+</section>
+
+<section>
+<h3>Architecture : hôte, clients, serveurs</h3>
+<svg class="dg" viewBox="0 0 1180 400" role="img" aria-label="L’hôte contient l’orchestration avec le LLM et trois clients MCP. Chaque client est relié à un seul serveur MCP : fichiers et base SQL en stdio, tickets en HTTP. Chaque serveur accède à sa propre ressource : disque local, PostgreSQL, API SaaS.">
+<rect class="frame" x="4" y="4" width="566" height="392"/><text class="l start" x="24" y="30">Hôte · application IA</text>
+<line class="e k" x1="230" y1="200" x2="370" y2="98"/><line class="e k" x1="230" y1="200" x2="370" y2="208"/><line class="e k" x1="230" y1="200" x2="370" y2="318"/>
+<rect class="ink" x="30" y="150" width="200" height="100"/><text x="130" y="178">Orchestration</text><text class="s" x="130" y="204">LLM, contexte,</text><text class="s" x="130" y="224">permissions</text>
+<rect class="blue" x="370" y="70" width="170" height="56"/><text x="455" y="98">Client MCP 1</text>
+<rect class="blue" x="370" y="180" width="170" height="56"/><text x="455" y="208">Client MCP 2</text>
+<rect class="blue" x="370" y="290" width="170" height="56"/><text x="455" y="318">Client MCP 3</text>
+<line class="e flow" x1="540" y1="90" x2="700" y2="90" marker-end="url(#ah)"/><line class="e flow" x1="700" y1="106" x2="540" y2="106" marker-end="url(#ah)"/><text class="l" x="630" y="68">stdio</text>
+<line class="e flow" x1="540" y1="200" x2="700" y2="200" marker-end="url(#ah)"/><line class="e flow" x1="700" y1="216" x2="540" y2="216" marker-end="url(#ah)"/><text class="l" x="630" y="178">stdio</text>
+<line class="e flow" x1="540" y1="310" x2="700" y2="310" marker-end="url(#ah)"/><line class="e flow" x1="700" y1="326" x2="540" y2="326" marker-end="url(#ah)"/><text class="l" x="630" y="288">HTTP</text>
+<rect class="ink" x="700" y="70" width="210" height="56"/><text x="805" y="98">Serveur fichiers</text>
+<rect class="ink" x="700" y="180" width="210" height="56"/><text x="805" y="208">Serveur base SQL</text>
+<rect class="ink" x="700" y="290" width="210" height="56"/><text x="805" y="318">Serveur tickets</text>
+<line class="e k" x1="910" y1="98" x2="1010" y2="98" marker-end="url(#ahk)"/><line class="e k" x1="910" y1="208" x2="1010" y2="208" marker-end="url(#ahk)"/><line class="e k" x1="910" y1="318" x2="1010" y2="318" marker-end="url(#ahk)"/>
+<rect class="soft" x="1010" y="70" width="166" height="56"/><text class="d" x="1093" y="98">Disque local</text>
+<rect class="soft" x="1010" y="180" width="166" height="56"/><text class="d" x="1093" y="208">PostgreSQL</text>
+<rect class="soft" x="1010" y="290" width="166" height="56"/><text class="d" x="1093" y="318">API SaaS</text>
+</svg>
+<p class="caption">Un client = une relation avec un serveur. Les serveurs ne se voient pas entre eux : seul l’hôte agrège.</p>
+<aside class="notes">Exemples d’hôtes : un IDE, un assistant de bureau, un agent Mastra. Le client est un composant de l’hôte, pas un programme séparé. Un serveur MCP n’a pas besoin de LLM : c’est souvent un simple adaptateur au-dessus d’une API existante. L’isolation entre serveurs est une propriété de sécurité : un serveur ne lit ni la conversation complète ni les autres serveurs.</aside>
+</section>
+
+<section>
+<h3>Qui fait quoi ?</h3>
+<table>
+<thead><tr><th>Rôle</th><th>Responsabilités</th><th>Ne fait pas</th></tr></thead>
+<tbody>
+<tr><td>Hôte</td><td>Dialogue avec l’utilisateur et le LLM, agrège le contexte, applique les permissions et le consentement.</td><td>Parler MCP directement : il délègue à ses clients.</td></tr>
+<tr><td>Client MCP</td><td>Découvre les capacités d’un serveur, transmet les appels, reçoit résultats et notifications.</td><td>Décider quel outil appeler.</td></tr>
+<tr><td>Serveur MCP</td><td>Publie ses capacités, valide les entrées, exécute l’opération avec ses propres contrôles d’accès.</td><td>Voir la conversation ou piloter le modèle.</td></tr>
+</tbody>
+</table>
+<p class="caption">La découverte ne confère aucun droit : l’hôte <strong>et</strong> le serveur contrôlent chacun de leur côté.</p>
+<aside class="notes">Point d’attention niveau master : la décision d’appeler un outil est prise par le LLM, mais la décision d’exécuter l’appel est prise par l’hôte. Ce découplage est ce qui permet le « human in the loop ».</aside>
+</section>
+
+<section>
+<h3>Trois primitives, trois pilotes</h3>
+<table>
+<thead><tr><th>Primitive</th><th>Rôle</th><th>Qui décide de l’utiliser ?</th><th>Exemple documentaire</th></tr></thead>
+<tbody>
+<tr><td>Tool</td><td>Exécuter une action ou un calcul.</td><td>Le <strong>modèle</strong>, sous contrôle de l’hôte.</td><td><code>chercher_document("authentification")</code></td></tr>
+<tr><td>Resource</td><td>Lire une donnée identifiée par une URI.</td><td>L’<strong>application</strong> hôte.</td><td><code>docs://securite/auth</code></td></tr>
+<tr><td>Prompt</td><td>Fournir un gabarit de messages paramétré.</td><td>L’<strong>utilisateur</strong>, par exemple via une commande.</td><td><code>resumer_document(public="développeur")</code></td></tr>
+</tbody>
+</table>
+<ul class="medium" style="margin-top:22px">
+<li>Méthodes : <code>tools/list</code> · <code>tools/call</code>, <code>resources/list</code> · <code>resources/read</code>, <code>prompts/list</code> · <code>prompts/get</code>.</li>
+<li>Un prompt MCP renvoie des messages, pas une réponse générée.</li>
+</ul>
+<aside class="notes">La colonne « qui décide » est la clé de lecture de la spécification : model-controlled, application-controlled, user-controlled. En pratique, la majorité des serveurs n’exposent que des tools. Une resource peut être du texte ou du binaire ; son URI n’est pas forcément une URL HTTP.</aside>
+</section>
+
+<section class="code-compare">
+<h3>Même service, deux interfaces</h3>
+<p class="caption">Extraits TypeScript côté serveur · fonction métier commune <code>chercherDocument</code>.</p>
+<div class="grid">
+<div><h4>API HTTP · Express</h4><pre><code>import express from 'express';
+import { chercherDocument } from './recherche.js';
+
+const app = express();
+app.use(express.json());
+app.post('/recherche', async (req, res) =&gt; {
+  const result = await chercherDocument(req.body);
+  res.json(result);
+});
+app.listen(3000);</code></pre></div>
+<div><h4>Serveur MCP · SDK TypeScript v1</h4><pre><code>import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
+import { chercherDocument } from './recherche.js';
+
+const server = new McpServer({ name: 'docs', version: '1.0.0' });
+server.registerTool('chercher_document', {
+  description: 'Recherche dans le catalogue',
+  inputSchema: { requete: z.string() }
+}, async (args) =&gt; ({ content: [{ type: 'text',
+  text: JSON.stringify(await chercherDocument(args)) }] }));
+await server.connect(new StdioServerTransport());</code></pre></div>
+</div>
+<p class="code-result"><strong>Même résultat métier.</strong> Côté MCP, le nom, la description et le schéma sont découvrables à l’exécution par n’importe quel client compatible.</p>
+<aside class="notes">Les exemples supposent une fonction métier et les dépendances installées. Une API peut publier un contrat OpenAPI ; la différence tient à la découverte à l’exécution et au cycle d’intégration standardisé, pas à une supériorité technique. Extraits pédagogiques : pas de gestion d’erreur ni de validation côté Express. Vérifier l’API du SDK installé avant la séance.</aside>
+</section>
+
+<section>
+<h3>Un contrat d’outil</h3>
+<div class="grid code-side">
+<pre><code>{
+  "name": "chercher_document",
+  "description": "Recherche dans le catalogue
+     interne. Renvoie au plus 10 documents.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "requete": { "type": "string" },
+      "limite":  { "type": "integer",
+                   "maximum": 10 }
+    },
+    "required": ["requete"]
+  }
+}</code></pre>
+<ul class="points">
+<li><strong>name</strong> : identifiant utilisé dans <code>tools/call</code>.</li>
+<li><strong>description</strong> : lue par le modèle. C’est du prompt, à écrire et à tester comme tel.</li>
+<li><strong>inputSchema</strong> : JSON Schema ; contraint la <em>forme</em> des arguments.</li>
+<li>Optionnels : <code>outputSchema</code>, annotations (lecture seule, destructif…).</li>
+</ul>
+</div>
+<p class="caption">Élément de la réponse à <code>tools/list</code>. Le schéma ne garantit ni l’exactitude du résultat ni les droits d’accès.</p>
+<aside class="notes">Faire le lien avec les « Principled Instructions » du cours précédent : la qualité des descriptions conditionne la qualité des appels. Les annotations sont des indications fournies par le serveur : un hôte ne doit pas leur faire confiance si le serveur n’est pas de confiance.</aside>
+</section>
+
+<section>
+<h3>Cycle complet d’un appel</h3>
+<svg class="dg" viewBox="0 0 1180 420" role="img" aria-label="Diagramme de séquence MCP : le client découvre les capacités et la liste des outils du serveur, l’utilisateur pose une question, le LLM choisit un outil, l’hôte valide l’appel, le client envoie tools/call, le serveur renvoie le résultat qui est ajouté au contexte, puis l’hôte répond à l’utilisateur.">
+<line class="life" x1="120" y1="46" x2="120" y2="420"/><line class="life" x1="410" y1="46" x2="410" y2="420"/><line class="life" x1="730" y1="46" x2="730" y2="420"/><line class="life" x1="1050" y1="46" x2="1050" y2="420"/>
+<rect class="soft" x="10" y="0" width="220" height="46"/><text class="d" x="120" y="23">Utilisateur</text>
+<rect class="ink" x="300" y="0" width="220" height="46"/><text x="410" y="23">Hôte + LLM</text>
+<rect class="blue" x="620" y="0" width="220" height="46"/><text x="730" y="23">Client MCP</text>
+<rect class="ink" x="940" y="0" width="220" height="46"/><text x="1050" y="23">Serveur MCP</text>
+<line class="e" x1="730" y1="90" x2="1050" y2="90" marker-end="url(#ah)"/><text class="l" x="890" y="76">1 · server/discover, tools/list</text>
+<line class="e r" x1="1050" y1="132" x2="730" y2="132" marker-end="url(#ah)"/><text class="l" x="890" y="118">2 · capacités, outils, schémas</text>
+<line class="e" x1="120" y1="174" x2="410" y2="174" marker-end="url(#ah)"/><text class="l" x="265" y="160">3 · question</text>
+<rect class="soft" x="290" y="194" width="240" height="36"/><text class="d s" x="410" y="212">4 · le LLM choisit un outil</text>
+<line class="e" x1="410" y1="262" x2="730" y2="262" marker-end="url(#ah)"/><text class="l" x="570" y="248">5 · appel validé par l’hôte</text>
+<line class="e" x1="730" y1="298" x2="1050" y2="298" marker-end="url(#ah)"/><text class="l" x="890" y="284">6 · tools/call</text>
+<line class="e r" x1="1050" y1="334" x2="730" y2="334" marker-end="url(#ah)"/><text class="l" x="890" y="320">7 · résultat ou erreur</text>
+<line class="e r" x1="730" y1="370" x2="410" y2="370" marker-end="url(#ah)"/><text class="l" x="570" y="356">8 · résultat → contexte</text>
+<line class="e r" x1="410" y1="406" x2="120" y2="406" marker-end="url(#ah)"/><text class="l" x="265" y="392">9 · réponse</text>
+</svg>
+<p class="caption">Séquence en révision 2026-07-28. Avant, l’étape 1 commençait par un échange <code>initialize</code>.</p>
+<aside class="notes">Comparer avec la séquence de tool calling de l’introduction : MCP standardise uniquement les flèches entre client et serveur (1, 2, 6, 7). Les étapes 3 à 5 et 8 à 9 restent du ressort de l’hôte et du fournisseur de LLM. Les étapes 4 à 8 se répètent tant que le modèle demande des outils.</aside>
+</section>
+
+<section>
+<h3>Sur le fil : JSON-RPC 2.0</h3>
+<pre class="compact"><code>// Requête : client → serveur
+{ "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+  "params": {
+    "name": "chercher_document",
+    "arguments": { "requete": "authentification" },
+    "_meta": {
+      "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+      "io.modelcontextprotocol/clientCapabilities": {} } } }
+
+// Réponse : serveur → client
+{ "jsonrpc": "2.0", "id": 2,
+  "result": {
+    "resultType": "complete",
+    "content": [{ "type": "text", "text": "[{\"id\": \"doc-12\", \"titre\": \"Auth OAuth\"}]" }],
+    "isError": false } }</code></pre>
+<p class="caption">Extraits simplifiés. <code>id</code> associe la réponse à la requête ; <code>isError: true</code> signale une erreur métier que le modèle peut lire et corriger.</p>
+<aside class="notes">Deux niveaux d’erreur à distinguer : l’erreur de protocole (objet « error » JSON-RPC, par exemple méthode inconnue) et l’erreur d’exécution de l’outil (résultat avec isError), renvoyée au modèle pour qu’il puisse réessayer. Depuis 2026-07-28, chaque requête porte sa version et les capacités du client dans _meta.</aside>
+</section>
+
+<section>
+<h3>MCP évolue : 2025-11-25 → 2026-07-28</h3>
+<table>
+<thead><tr><th></th><th>2025-11-25</th><th>2026-07-28 (révision courante)</th></tr></thead>
+<tbody>
+<tr><td>Ouverture</td><td>Échange <code>initialize</code> / <code>initialized</code></td><td>Aucun handshake ; <code>server/discover</code> à la demande</td></tr>
+<tr><td>Version et capacités</td><td>Négociées une fois, au début</td><td>Portées par chaque requête dans <code>_meta</code></td></tr>
+<tr><td>Session HTTP</td><td>En-tête <code>Mcp-Session-Id</code></td><td>Supprimée : protocole sans état</td></tr>
+<tr><td>Serveur → client</td><td>Requêtes initiées par le serveur</td><td>Résultat <code>input_required</code>, puis nouvel essai du client</td></tr>
+<tr><td>Dépréciés</td><td>—</td><td>Roots, sampling, logging</td></tr>
+</tbody>
+</table>
+<p class="caption">Sans état = chaque requête est autonome : mise à l’échelle et répartition de charge simplifiées. Un SDK peut prendre en charge les deux générations.</p>
+<aside class="notes">Intérêt pédagogique : montrer qu’un protocole jeune fait des choix d’architecture réversibles. Le passage au sans-état rapproche MCP d’une API HTTP classique et facilite le déploiement derrière un répartiteur de charge. Version du protocole et version du SDK sont deux choses distinctes. Clients anciens et serveurs récents ne sont pas compatibles sans prise en charge des deux générations.</aside>
+</section>
+
+<section>
+<h3>Quand le serveur a besoin d’une précision</h3>
+<svg class="dg" viewBox="0 0 1180 250" role="img" aria-label="Le client appelle un outil, le serveur répond par un résultat input_required contenant une question, le client renvoie le même appel avec la réponse de l’utilisateur, le serveur renvoie un résultat complet.">
+<line class="life" x1="170" y1="46" x2="170" y2="250"/><line class="life" x1="1010" y1="46" x2="1010" y2="250"/>
+<rect class="blue" x="60" y="0" width="220" height="46"/><text x="170" y="23">Client MCP</text>
+<rect class="ink" x="900" y="0" width="220" height="46"/><text x="1010" y="23">Serveur MCP</text>
+<line class="e" x1="170" y1="92" x2="1010" y2="92" marker-end="url(#ah)"/><text class="l" x="590" y="78">1 · tools/call  reserver_salle(salle : "B12")</text>
+<line class="e r" x1="1010" y1="140" x2="170" y2="140" marker-end="url(#ah)"/><text class="l" x="590" y="126">2 · resultType : "input_required" · inputRequests : « Pour quelle date ? »</text>
+<line class="e" x1="170" y1="188" x2="1010" y2="188" marker-end="url(#ah)"/><text class="l" x="590" y="174">3 · même appel + inputResponses : « 14 novembre »</text>
+<line class="e r" x1="1010" y1="236" x2="170" y2="236" marker-end="url(#ah)"/><text class="l" x="590" y="222">4 · resultType : "complete" · réservation confirmée</text>
+</svg>
+<ul class="medium" style="margin-top:20px">
+<li><strong>Élicitation</strong> : le serveur demande une information à l’utilisateur, via l’hôte.</li>
+<li>Le serveur ne garde rien en mémoire entre 2 et 3 : c’est le client qui rejoue l’appel.</li>
+</ul>
+<aside class="notes">Mécanisme appelé « multi round-trip requests » dans la révision 2026-07-28. Il remplace les requêtes initiées par le serveur. Retenir l’idée, pas le détail des champs : on retrouve exactement le même besoin côté A2A avec l’état input-required.</aside>
+</section>
+
+<section>
+<h3>Transports : local et distant</h3>
+<div class="grid">
+<div class="card"><h3>stdio</h3><p>L’hôte lance le serveur comme un <strong>processus local</strong> et échange par entrée / sortie standard.</p><p>Simple, sans réseau. Le serveur hérite des droits de l’utilisateur.</p><p>Les logs vont sur <code>stderr</code>, jamais sur <code>stdout</code>.</p></div>
+<div class="card"><h3>Streamable HTTP</h3><p>Le serveur est un <strong>service distant</strong> : une requête = un POST, réponse JSON ou flux SSE.</p><p>Partageable entre utilisateurs et applications.</p><p>Autorisation par OAuth 2.1 ; contrôle d’accès indispensable.</p></div>
+</div>
+<p class="caption">Les messages JSON-RPC sont identiques dans les deux cas. Le TP utilise stdio.</p>
+<aside class="notes">Piège classique du TP : un console.log dans un serveur stdio corrompt le flux JSON-RPC. En HTTP, le serveur MCP est un serveur de ressources OAuth : il valide un jeton, il ne gère pas lui-même les mots de passe.</aside>
+</section>
+
+<section>
+<h3>Une frontière de confiance</h3>
+<svg class="dg" viewBox="0 0 1180 96" role="img" aria-label="Chaîne d’attaque par injection indirecte : un contenu non fiable est lu par un serveur MCP, son résultat entre dans le contexte du LLM, qui déclenche un appel vers un outil sortant.">
+<line class="e" x1="200" y1="40" x2="327" y2="40" marker-end="url(#ah)"/><text class="l" x="262" y="18">lecture</text>
+<line class="e" x1="527" y1="40" x2="653" y2="40" marker-end="url(#ah)"/><text class="l" x="589" y="18">résultat</text>
+<line class="e" x1="853" y1="40" x2="980" y2="40" marker-end="url(#ah)"/><text class="l" x="915" y="18">appel induit</text>
+<rect class="soft" x="1" y="4" width="199" height="72"/><text class="d" x="100" y="30">Contenu non fiable</text><text class="d s" x="100" y="54">page, ticket, e-mail</text>
+<rect class="ink" x="327" y="4" width="200" height="72"/><text x="427" y="30">Serveur MCP</text><text class="s" x="427" y="54">renvoie le contenu</text>
+<rect class="blue" x="653" y="4" width="200" height="72"/><text x="753" y="30">Hôte + LLM</text><text class="s" x="753" y="54">lit une instruction cachée</text>
+<rect class="ink" x="980" y="4" width="199" height="72"/><text x="1080" y="30">Outil sortant</text><text class="s" x="1080" y="54">e-mail, requête HTTP</text>
+</svg>
+<div class="grid" style="margin-top:14px">
+<div class="card tight"><h3>Risques</h3><ul><li><strong>Injection indirecte</strong> : un résultat d’outil contient des instructions.</li><li><strong>Empoisonnement d’outil</strong> : la description elle-même est hostile, ou change après installation.</li><li><strong>Trio dangereux</strong> : données privées + contenu non fiable + canal de sortie.</li></ul></div>
+<div class="card tight"><h3>Mesures</h3><ul><li>Moindre privilège par serveur ; lecture seule par défaut.</li><li>Confirmation humaine pour les actions sensibles.</li><li>Épingler les versions, vérifier la provenance des serveurs.</li><li>Journaliser les appels, sans secrets.</li></ul></div>
+</div>
+<aside class="notes">Message central : toute sortie d’outil est une donnée non fiable, pas une instruction. Le « trio dangereux » (lethal trifecta, Simon Willison) : dès qu’un agent combine ces trois propriétés, l’exfiltration devient possible sans faille logicielle. Lien avec le défi « injection de prompt entre agents » du cours précédent. Un serveur stdio s’exécute avec les droits de l’utilisateur : installer un serveur MCP, c’est exécuter du code tiers.</aside>
+</section>
+
+<section>
+<h3>Ce que MCP ne règle pas</h3>
+<ul>
+<li>Il ne remplace ni l’API métier ni son modèle d’autorisation.</li>
+<li>Un schéma valide ne garantit pas un résultat exact.</li>
+<li>Chaque description d’outil consomme du <strong>contexte</strong> : cent outils chargés coûtent cher avant même la première question.</li>
+<li>Le choix du bon outil reste une décision du modèle, donc faillible.</li>
+</ul>
+<p class="caption">Pistes actuelles : chargement des outils à la demande, recherche d’outils, exécution de code qui appelle les serveurs.</p>
+<aside class="notes">Point critique niveau master : le coût en contexte et la dégradation du choix d’outil quand leur nombre augmente sont des sujets de recherche et d’ingénierie ouverts. Une API documentée par OpenAPI reste un choix légitime quand les clients ne sont pas des applications IA.</aside>
+</section>
+
+<section class="chapter" data-background-color="#175bff">
+<h2><span class="number">02</span>A2A<br>Déléguer entre agents</h2>
+<p>Agent2Agent : confier une tâche à un agent autonome, sans connaître son fonctionnement interne.</p>
+<aside class="notes">Environ 20 min. On passe à l’axe horizontal. Progression : découverte par l’Agent Card, objets clés, cycle de vie d’une tâche, scénario complet, puis suivi des tâches longues. Faire remarquer au fil de l’eau ce qui ressemble à MCP (JSON-RPC, découverte à l’exécution) et ce qui s’en écarte (opacité, durée).</aside>
+</section>
+
+<section>
+<h3>Pourquoi un second protocole ?</h3>
+<div class="grid">
+<div class="card"><h3>Un outil</h3><p>Entrée et sortie décrites par un schéma.</p><p>Appel court, le plus souvent sans état.</p><p>L’appelant garde le contrôle du raisonnement.</p></div>
+<div class="card"><h3>Un agent</h3><p>Reçoit un objectif en langage naturel.</p><p>Travail long, en plusieurs tours ; peut demander une précision ou refuser.</p><p>Décide seul de la méthode : <strong>boîte opaque</strong>.</p></div>
+</div>
+<p class="caption">A2A standardise la délégation entre pairs : découverte, échange de messages, suivi d’une tâche dans le temps.</p>
+<aside class="notes">On peut exposer un agent comme un simple outil MCP, mais on perd alors le suivi d’une tâche longue, la négociation et les échanges multi-tours. Lien avec le Contract Net vu au cours précédent : annonce d’une tâche, acceptation ou refus, exécution, résultat.</aside>
+</section>
+
+<section>
+<h3>Acteurs et découverte</h3>
+<svg class="dg" viewBox="0 0 1180 340" role="img" aria-label="L’utilisateur s’adresse à un agent client. L’agent client lit l’Agent Card publiée par l’agent distant, puis lui envoie un message et reçoit une tâche, des messages et des artefacts. Le fonctionnement interne de l’agent distant n’est pas exposé.">
+<path class="e" d="M420 130 V32 H860" marker-end="url(#ah)"/><text class="l" x="640" y="12">1 · lecture de la carte : compétences, URL, sécurité</text>
+<line class="e" x1="180" y1="165" x2="310" y2="165" marker-end="url(#ah)"/><text class="l" x="245" y="143">demande</text>
+<line class="e flow" x1="530" y1="156" x2="860" y2="156" marker-end="url(#ah)"/><line class="e flow" x1="860" y1="174" x2="530" y2="174" marker-end="url(#ah)"/>
+<text class="l" x="695" y="134">2 · SendMessage</text><text class="l" x="695" y="198">3 · tâche, messages, artefacts</text>
+<rect class="soft" x="1" y="130" width="179" height="70"/><text class="d" x="90" y="165">Utilisateur</text>
+<rect class="blue" x="310" y="130" width="220" height="70"/><text x="420" y="165">Agent client</text>
+<rect class="soft" x="860" y="4" width="280" height="60"/><text class="d" x="1000" y="24">Agent Card</text><text class="d s" x="1000" y="46">/.well-known/agent-card.json</text>
+<rect class="ink" x="860" y="130" width="280" height="70"/><text x="1000" y="154">Agent distant</text><text class="s" x="1000" y="178">serveur A2A</text>
+<line class="e k" x1="1000" y1="64" x2="1000" y2="130"/>
+<rect class="frame" x="840" y="236" width="320" height="84"/><text class="m" x="1000" y="264">non exposé :</text><text class="m" x="1000" y="290">LLM, outils, mémoire, prompts</text>
+<line class="e k r" x1="1000" y1="200" x2="1000" y2="236"/>
+</svg>
+<p class="caption">La découverte passe par une URL connue, un registre ou une configuration directe.</p>
+<aside class="notes">Vocabulaire de la spécification : user, A2A client (agent client), A2A server (agent distant). L’opacité est un choix de conception : elle protège la propriété intellectuelle et permet de faire collaborer des organisations différentes. L’Agent Card est l’équivalent du Directory Facilitator de FIPA, en décentralisé.</aside>
+</section>
+
+<section>
+<h3>L’Agent Card</h3>
+<div class="grid code-side">
+<pre class="compact"><code>{
+  "name": "Agent d'analyse documentaire",
+  "description": "Analyse des contrats, produit une synthèse",
+  "version": "1.2.0",
+  "supportedInterfaces": [{
+    "url": "https://analyse.exemple.fr/a2a",
+    "protocolBinding": "JSONRPC",
+    "protocolVersion": "1.0" }],
+  "capabilities": { "streaming": true,
+                    "pushNotifications": false },
+  "defaultInputModes": ["text/plain", "application/pdf"],
+  "defaultOutputModes": ["application/pdf"],
+  "skills": [{
+    "id": "analyse-contrat",
+    "name": "Analyse de contrat",
+    "description": "Repère les clauses à risque",
+    "tags": ["juridique", "synthèse"] }]
+}</code></pre>
+<ul class="points">
+<li><strong>supportedInterfaces</strong> : où et comment joindre l’agent.</li>
+<li><strong>capabilities</strong> : flux, notifications.</li>
+<li><strong>skills</strong> : ce que l’agent sait faire, décrit pour un autre agent.</li>
+<li>Aussi : schémas de sécurité, signature de la carte.</li>
+</ul>
+</div>
+<p class="caption">Trois bindings en version 1.0 : JSON-RPC, gRPC, HTTP+JSON.</p>
+<aside class="notes">Contraste avec MCP : une skill n’a pas de schéma d’entrée strict, elle décrit une compétence en langage naturel. Le client choisit un agent, pas une fonction. La carte peut être signée pour en vérifier la provenance ; une carte étendue peut être servie après authentification.</aside>
+</section>
+
+<section>
+<h3>Les objets clés d’A2A</h3>
+<table>
+<thead><tr><th>Objet</th><th>Rôle</th><th>À retenir</th></tr></thead>
+<tbody>
+<tr><td>Message</td><td>Un tour d’échange, de rôle <code>user</code> ou <code>agent</code>.</td><td>Composé de <em>parts</em>.</td></tr>
+<tr><td>Part</td><td>Un fragment de contenu : texte, fichier (octets ou URL), données JSON.</td><td>Multimodal par construction.</td></tr>
+<tr><td>Task</td><td>Un travail suivi dans le temps, avec identifiant et état.</td><td>Créée par l’agent distant, jamais par le client.</td></tr>
+<tr><td>Artifact</td><td>Un résultat produit par la tâche : rapport, fichier, données.</td><td>Distinct des messages de dialogue.</td></tr>
+<tr><td>contextId</td><td>Regroupe plusieurs tâches et messages liés.</td><td>Fil de conversation.</td></tr>
+</tbody>
+</table>
+<p class="caption">À un message, l’agent distant répond soit par un <strong>Message</strong> direct, soit par une <strong>Task</strong>.</p>
+<aside class="notes">Réponse simple et immédiate : un Message suffit. Travail long ou à suivre : l’agent crée une Task. C’est l’agent distant qui choisit, le client doit gérer les deux cas.</aside>
+</section>
+
+<section>
+<h3>Cycle de vie d’une tâche</h3>
+<svg class="dg" viewBox="0 0 1180 400" role="img" aria-label="Machine à états d’une tâche A2A : submitted mène à working ou à rejected. Working peut passer à input-required ou auth-required puis revenir, et se termine en completed, failed ou canceled.">
+<line class="e" x1="170" y1="188" x2="280" y2="188" marker-end="url(#ah)"/>
+<line class="e" x1="365" y1="160" x2="365" y2="76" marker-end="url(#ah)" marker-start="url(#ah)"/><text class="m start" x="382" y="118">précision demandée au client</text>
+<line class="e" x1="365" y1="216" x2="365" y2="300" marker-end="url(#ah)" marker-start="url(#ah)"/><text class="m start" x="382" y="258">authentification requise</text>
+<line class="e" x1="450" y1="188" x2="900" y2="68" marker-end="url(#ah)"/><line class="e" x1="450" y1="188" x2="900" y2="153" marker-end="url(#ah)"/><line class="e" x1="450" y1="188" x2="900" y2="238" marker-end="url(#ah)"/>
+<path class="e r" d="M85 216 V385 H1000 V351" marker-end="url(#ah)"/><text class="m" x="560" y="385">l’agent refuse la tâche</text>
+<rect class="ink" x="0" y="160" width="170" height="56"/><text x="85" y="188">submitted</text>
+<rect class="blue" x="280" y="160" width="170" height="56"/><text x="365" y="188">working</text>
+<rect class="soft" x="265" y="20" width="200" height="56"/><text class="d" x="365" y="48">input-required</text>
+<rect class="soft" x="265" y="300" width="200" height="56"/><text class="d" x="365" y="328">auth-required</text>
+<text class="l" x="1000" y="14">États terminaux</text>
+<rect class="ink" x="900" y="40" width="200" height="56"/><text x="1000" y="68">completed</text>
+<rect class="ink" x="900" y="125" width="200" height="56"/><text x="1000" y="153">failed</text>
+<rect class="ink" x="900" y="210" width="200" height="56"/><text x="1000" y="238">canceled</text>
+<rect class="ink" x="900" y="295" width="200" height="56"/><text x="1000" y="323">rejected</text>
+</svg>
+<p class="caption">Sur le fil : <code>TASK_STATE_WORKING</code>, <code>TASK_STATE_INPUT_REQUIRED</code>… Une tâche terminée n’accepte plus de message : la suite passe par une nouvelle tâche du même contexte.</p>
+<aside class="notes">Deux états « interrompus » : input-required et auth-required. Ils rendent explicite ce que le tool calling cache : un agent distant peut avoir besoin d’un humain ou d’un droit supplémentaire. Faire remarquer la parenté avec l’élicitation MCP vue plus tôt. Schéma simplifié : une tâche peut aussi échouer ou être annulée depuis un état interrompu.</aside>
+</section>
+
+<section>
+<h3>Scénario : déléguer une analyse</h3>
+<svg class="dg" viewBox="0 0 1180 330" role="img" aria-label="Diagramme de séquence A2A : l’agent client envoie un message, l’agent distant crée une tâche en cours, demande une précision, reçoit la réponse sur la même tâche, diffuse l’avancement puis livre un artefact et termine la tâche.">
+<line class="life" x1="170" y1="46" x2="170" y2="330"/><line class="life" x1="1010" y1="46" x2="1010" y2="330"/>
+<rect class="blue" x="60" y="0" width="220" height="46"/><text x="170" y="23">Agent client</text>
+<rect class="ink" x="900" y="0" width="220" height="46"/><text x="1010" y="23">Agent distant</text>
+<line class="e" x1="170" y1="90" x2="1010" y2="90" marker-end="url(#ah)"/><text class="l" x="590" y="76">1 · SendMessage : « Analyse ces trois contrats »</text>
+<line class="e r" x1="1010" y1="134" x2="170" y2="134" marker-end="url(#ah)"/><text class="l" x="590" y="120">2 · Task t-42 · working</text>
+<line class="e r" x1="1010" y1="178" x2="170" y2="178" marker-end="url(#ah)"/><text class="l" x="590" y="164">3 · Task t-42 · input-required : « Quel droit applicable ? »</text>
+<line class="e" x1="170" y1="222" x2="1010" y2="222" marker-end="url(#ah)"/><text class="l" x="590" y="208">4 · SendMessage (taskId : t-42) : « Droit français »</text>
+<line class="e r" x1="1010" y1="266" x2="170" y2="266" marker-end="url(#ah)"/><text class="l" x="590" y="252">5 · mise à jour d’état : working</text>
+<line class="e r" x1="1010" y1="310" x2="170" y2="310" marker-end="url(#ah)"/><text class="l" x="590" y="296">6 · artefact : rapport.pdf · completed</text>
+</svg>
+<p class="caption">L’agent client vérifie ensuite l’artefact : provenance, cohérence, conformité à la demande.</p>
+<aside class="notes">À aucun moment l’agent client ne voit les outils ou le raisonnement de l’agent distant. L’étape 4 réutilise le taskId pour poursuivre la même tâche. Les étapes 5 et 6 arrivent par flux ou par interrogation, voir la slide suivante.</aside>
+</section>
+
+<section>
+<h3>Sur le fil : SendMessage</h3>
+<pre class="compact"><code>// Requête : agent client → agent distant
+{ "jsonrpc": "2.0", "id": 1, "method": "SendMessage",
+  "params": { "message": {
+    "messageId": "m-001",
+    "role": "ROLE_USER",
+    "parts": [
+      { "text": "Analyse ces trois contrats." },
+      { "url": "https://exemple.fr/contrats.zip", "mediaType": "application/zip" } ] } } }
+
+// Réponse : l’agent distant crée une tâche
+{ "jsonrpc": "2.0", "id": 1,
+  "result": { "task": {
+    "id": "t-42",
+    "contextId": "c-7",
+    "status": { "state": "TASK_STATE_WORKING" } } } }</code></pre>
+<p class="caption">Extraits simplifiés, binding JSON-RPC, version 1.0. Même enveloppe que MCP : seules les méthodes et les objets changent.</p>
+<aside class="notes">Le rôle « user » désigne le côté client, que l’émetteur soit un humain ou un agent. Autres opérations : GetTask, ListTasks, CancelTask, SubscribeToTask. Le client annonce la version dans l’en-tête A2A-Version.</aside>
+</section>
+
+<section>
+<h3>Suivre une tâche longue</h3>
+<div class="grid three">
+<div class="card"><h3>Interrogation</h3><p>Le client appelle <code>GetTask</code> à intervalles réguliers.</p><p>Simple, universel ; latence plus élevée.</p></div>
+<div class="card"><h3>Flux</h3><p><code>SendStreamingMessage</code> ou <code>SubscribeToTask</code> : événements poussés en SSE.</p><p>Retour en temps réel ; connexion à maintenir.</p></div>
+<div class="card"><h3>Notification</h3><p>L’agent distant appelle un <strong>webhook</strong> fourni par le client.</p><p>Adapté aux tâches de plusieurs heures, client déconnecté.</p></div>
+</div>
+<p class="caption">Flux et notifications sont optionnels : l’Agent Card indique ce que l’agent prend en charge.</p>
+<aside class="notes">Les trois mécanismes répondent à des durées de tâche différentes : secondes, minutes, heures ou jours. Un webhook exposé par le client est lui-même une surface d’attaque : il doit authentifier l’appelant.</aside>
+</section>
+
+<section class="chapter" data-background-color="#175bff">
+<h2><span class="number">03</span>Choisir et combiner</h2>
+<p>Deux protocoles complémentaires, et des questions encore ouvertes.</p>
+<aside class="notes">Environ 10 min. Partie de synthèse et de prise de recul : comparaison terme à terme, architecture combinée, critères pour trancher entre outil et agent, limites ouvertes, puis une question de conception à traiter en binôme pendant 5 minutes.</aside>
+</section>
+
+<section>
+<h3>MCP et A2A : comparaison</h3>
+<table>
+<thead><tr><th></th><th>MCP</th><th>A2A</th></tr></thead>
+<tbody>
+<tr><td>Question</td><td>Comment utiliser une capacité exposée ?</td><td>Comment déléguer à un autre agent ?</td></tr>
+<tr><td>Relation</td><td>Application → capacité qu’elle pilote</td><td>Agent ↔ agent, entre pairs autonomes</td></tr>
+<tr><td>Découverte</td><td><code>server/discover</code>, <code>tools/list</code></td><td>Agent Card</td></tr>
+<tr><td>Contrat</td><td>Schéma d’entrée strict (JSON Schema)</td><td>Compétences décrites en langage naturel</td></tr>
+<tr><td>Unité d’échange</td><td>Appel d’outil, lecture de ressource</td><td>Message, tâche, artefact</td></tr>
+<tr><td>État et durée</td><td>Requête autonome, courte</td><td>Tâche avec cycle de vie, potentiellement longue</td></tr>
+<tr><td>Transparence</td><td>Capacités décrites en détail</td><td>Fonctionnement interne opaque</td></tr>
+</tbody>
+</table>
+<aside class="notes">Points communs à rappeler : JSON-RPC 2.0, standards ouverts, découverte à l’exécution, mêmes enjeux de sécurité. La différence essentielle est le niveau d’abstraction de ce qu’on délègue : une fonction ou un objectif.</aside>
+</section>
+
+<section>
+<h3>Une architecture qui combine les deux</h3>
+<svg class="dg" viewBox="0 0 1180 364" role="img" aria-label="Un agent orchestrateur reçoit la demande de l’utilisateur et délègue par A2A à un agent de recherche et à un agent d’analyse, situés dans deux organisations différentes. Chaque agent utilise ses propres serveurs MCP.">
+<rect class="frame" x="600" y="4" width="576" height="160"/><text class="m start" x="614" y="24">organisation A</text>
+<rect class="frame" x="600" y="198" width="576" height="160"/><text class="m start" x="614" y="218">organisation B</text>
+<line class="e" x1="150" y1="180" x2="230" y2="180" marker-end="url(#ah)"/>
+<line class="e" x1="450" y1="165" x2="620" y2="95" marker-end="url(#ah)" marker-start="url(#ah)"/><text class="l" x="530" y="110">A2A</text>
+<line class="e" x1="450" y1="195" x2="620" y2="287" marker-end="url(#ah)" marker-start="url(#ah)"/><text class="l" x="530" y="260">A2A</text>
+<line class="e" x1="830" y1="95" x2="980" y2="63" marker-end="url(#ah)" marker-start="url(#ah)"/><line class="e" x1="830" y1="95" x2="980" y2="123" marker-end="url(#ah)" marker-start="url(#ah)"/><text class="l" x="900" y="94">MCP</text>
+<line class="e" x1="830" y1="287" x2="980" y2="255" marker-end="url(#ah)" marker-start="url(#ah)"/><line class="e" x1="830" y1="287" x2="980" y2="315" marker-end="url(#ah)" marker-start="url(#ah)"/><text class="l" x="900" y="286">MCP</text>
+<rect class="soft" x="1" y="150" width="149" height="60"/><text class="d" x="75" y="180">Utilisateur</text>
+<rect class="blue" x="230" y="140" width="220" height="80"/><text x="340" y="168">Orchestrateur</text><text class="s" x="340" y="194">pattern superviseur</text>
+<rect class="ink" x="620" y="60" width="210" height="70"/><text x="725" y="95">Agent recherche</text>
+<rect class="ink" x="620" y="252" width="210" height="70"/><text x="725" y="287">Agent analyse</text>
+<rect class="soft" x="980" y="40" width="180" height="46"/><text class="d" x="1070" y="63">Serveur docs</text>
+<rect class="soft" x="980" y="100" width="180" height="46"/><text class="d" x="1070" y="123">Serveur web</text>
+<rect class="soft" x="980" y="232" width="180" height="46"/><text class="d" x="1070" y="255">Serveur SQL</text>
+<rect class="soft" x="980" y="292" width="180" height="46"/><text class="d" x="1070" y="315">Serveur calcul</text>
+</svg>
+<p class="caption">A2A traverse les frontières d’organisation ; MCP reste un détail interne de chaque agent.</p>
+<aside class="notes">Relire ce schéma avec les patterns du cours précédent : le superviseur délègue, mais ici les spécialistes sont hors de son processus et hors de son contrôle. L’orchestrateur peut aussi avoir ses propres serveurs MCP. À l’intérieur d’un même framework et d’une même équipe, un simple appel de fonction entre agents reste souvent suffisant.</aside>
+</section>
+
+<section>
+<h3>Outil ou agent : comment trancher ?</h3>
+<table>
+<thead><tr><th>Critère</th><th>Plutôt un outil MCP</th><th>Plutôt un agent A2A</th></tr></thead>
+<tbody>
+<tr><td>Demande</td><td>Arguments typés, résultat prévisible</td><td>Objectif ouvert, à interpréter</td></tr>
+<tr><td>Durée</td><td>Millisecondes à secondes</td><td>Minutes à jours, avec suivi</td></tr>
+<tr><td>Interaction</td><td>Un appel, une réponse</td><td>Plusieurs tours, précisions possibles</td></tr>
+<tr><td>Propriété</td><td>Capacité que l’on maîtrise ou que l’on audite</td><td>Système d’une autre équipe, logique privée</td></tr>
+<tr><td>Coût</td><td>Pas de LLM supplémentaire</td><td>Au moins un LLM de plus : coût, latence, variance</td></tr>
+</tbody>
+</table>
+<p class="caption">Règle du cours précédent, inchangée : commencer par la solution la plus simple qui satisfait le besoin.</p>
+<aside class="notes">La frontière est une décision de conception, pas une propriété technique : un même service de recherche peut être exposé comme outil (requête → documents) ou comme agent (question → synthèse sourcée). Faire discuter la salle sur un exemple : un service de traduction, un service de réservation de voyage.</aside>
+</section>
+
+<section>
+<h3>Limites et questions ouvertes</h3>
+<div class="grid">
+<div class="card tight"><h3>Sécurité et identité</h3><ul><li>Au nom de qui un agent agit-il, sur plusieurs sauts de délégation ?</li><li>Une carte ou une description peut mentir : la confiance ne se déduit pas du protocole.</li></ul></div>
+<div class="card tight"><h3>Fiabilité</h3><ul><li>Les erreurs se composent d’un agent à l’autre.</li><li>Comment évaluer un système dont une partie est opaque ?</li></ul></div>
+<div class="card tight"><h3>Coût</h3><ul><li>Contexte consommé par les descriptions d’outils.</li><li>Appels LLM multipliés par la délégation.</li></ul></div>
+<div class="card tight"><h3>Maturité</h3><ul><li>Spécifications récentes, ruptures entre révisions.</li><li>Registres, observabilité et gouvernance encore en construction.</li></ul></div>
+</div>
+<aside class="notes">Slide de prise de recul pour le niveau master. Ces questions sont de bons sujets de mémoire ou de veille. Rappeler que les protocoles FIPA ont échoué en partie par excès de complexité : l’adoption se joue sur la simplicité d’implémentation.</aside>
+</section>
+
+<section>
+<h3>Question de conception</h3>
+<p class="lead">Un assistant de veille juridique doit chercher des textes dans une base interne, puis obtenir d’un cabinet partenaire une analyse de conformité.</p>
+<div class="grid">
+<div class="card"><h3>À décider</h3><p>Quelles capacités exposer en MCP, avec quelles entrées ?</p><p>Quelle tâche déléguer en A2A, et quel artefact attendre ?</p></div>
+<div class="card"><h3>À justifier</h3><p>Quelles données ont le droit de sortir de l’organisation ?</p><p>Où placer une validation humaine ?</p></div>
+</div>
+<p class="caption">5 minutes en binôme, puis mise en commun.</p>
+<aside class="notes">Réponse attendue : la recherche dans la base interne est un outil MCP (entrée typée, résultat prévisible, données maîtrisées) ; l’analyse par le cabinet partenaire est une tâche A2A (autre organisation, travail long, précisions possibles). Le choix n’est pas exclusif : l’agent du cabinet utilise probablement ses propres serveurs MCP.</aside>
+</section>
+
+<section class="chapter" data-background-color="#175bff">
+<h2><span class="number">04</span>TP : construire<br>un serveur MCP</h2>
+<aside class="notes">45 min, en binôme. Objectif : compléter un serveur MCP local en stdio et le tester avec MCP Inspector, sans assistant ni clé d’API. Vérifier que chaque binôme a un poste prêt avant de présenter la mission.</aside>
+</section>
+
+<section>
+<h3>Mission : analyser un budget</h3>
+<p>En binôme, compléter un serveur MCP local qui expose l’outil <strong>analyser_budget</strong>.</p>
+<ul>
+<li>Déclarer le nom, la description et le schéma d’entrée.</li>
+<li>Calculer le coût total et la marge en euros.</li>
+<li>Retourner un indicateur de faisabilité.</li>
+<li>Tester avec MCP Inspector, sans assistant ni clé d’API.</li>
+</ul>
+<p class="caption">45 minutes · transport stdio · données fictives. Même domaine que le TP Mastra : la préparation d’un voyage.</p>
+<aside class="notes">MCP Inspector joue le rôle de client de test : connexion au serveur local, inspection des outils et des schémas, appels manuels, observation des résultats et des erreurs. Le dépôt de TP et son squelette restent à préparer.</aside>
+</section>
+
+<section>
+<h3>Trois cas à tester</h3>
+<table>
+<thead><tr><th>Cas</th><th>Entrées</th><th>Attendu</th></tr></thead>
+<tbody>
+<tr><td>Faisable</td><td>Budget 1 800 € · 4 jours · 150 €/j · transport 400 €</td><td>Total 1 000 € · marge +800 €</td></tr>
+<tr><td>Impossible</td><td>Budget 500 € · 2 jours · 150 €/j · transport 800 €</td><td>Total 1 100 € · marge −600 €</td></tr>
+<tr><td>Invalide</td><td>Durée négative ou budget manquant</td><td>Erreur explicite, lisible par un modèle</td></tr>
+</tbody>
+</table>
+<p class="caption">Le troisième cas est le plus instructif : qui rejette l’entrée, le schéma ou votre code ? Sous quelle forme l’erreur revient-elle ?</p>
+<aside class="notes">Faire observer la différence entre l’erreur de validation du schéma (budget manquant) et l’erreur métier (durée négative si le schéma ne l’interdit pas), et le champ isError du résultat.</aside>
+</section>
+
+<section>
+<h3>45 minutes : déroulé</h3>
+<table>
+<thead><tr><th>Durée</th><th>Action</th></tr></thead>
+<tbody>
+<tr><td>5 min</td><td>Démarrer le squelette et s’y connecter avec Inspector.</td></tr>
+<tr><td>10 min</td><td>Déclarer l’outil et son schéma.</td></tr>
+<tr><td>15 min</td><td>Implémenter le calcul et les validations.</td></tr>
+<tr><td>10 min</td><td>Tester les trois cas et lire les messages JSON-RPC échangés.</td></tr>
+<tr><td>5 min</td><td>Restitution : rôles de l’hôte, du client et du serveur dans ce que vous avez observé.</td></tr>
+</tbody>
+</table>
+<p class="caption">Pour aller plus loin : ajouter une resource <code>budget://bareme</code>, puis brancher le serveur sur un agent Mastra.</p>
+<aside class="notes">Rappeler le piège stdio : aucun console.log sur stdout. L’extension vers Mastra referme la boucle avec le TP précédent : l’agent devient l’hôte, le serveur écrit aujourd’hui devient l’un de ses outils.</aside>
+</section>
+
+<section>
+<h3>À retenir</h3>
+<ul>
+<li><strong>MCP</strong> relie une application IA à des capacités : tools, resources, prompts.</li>
+<li><strong>A2A</strong> relie des agents autonomes autour de tâches suivies dans le temps.</li>
+<li>Les deux se combinent : A2A entre agents, MCP à l’intérieur de chacun.</li>
+<li>Un protocole standardise l’échange, pas la confiance : validation, permissions et vérification restent à votre charge.</li>
+<li>Les spécifications bougent : raisonner sur les concepts, vérifier la révision.</li>
+</ul>
+<aside class="notes">Si une seule idée devait rester : un protocole standardise l’échange, pas la confiance. Faire reformuler par un étudiant la différence entre déléguer une fonction (MCP) et déléguer un objectif (A2A). Le dernier point justifie la méthode du cours : les concepts survivent aux révisions, pas le détail des champs.</aside>
+</section>
+
+<section>
+<h3>Ressources</h3>
+<ul class="medium">
+<li>MCP : <a href="https://modelcontextprotocol.io/docs/learn/architecture">architecture et concepts</a> · <a href="https://modelcontextprotocol.io/specification/2026-07-28">spécification 2026-07-28</a> · <a href="https://modelcontextprotocol.io/specification/2026-07-28/changelog">changements</a></li>
+<li>MCP en pratique : <a href="https://modelcontextprotocol.io/docs/develop/build-server">créer un serveur</a> · <a href="https://modelcontextprotocol.io/docs/tools/inspector">MCP Inspector</a> · <a href="https://github.com/microsoft/mcp-for-beginners">MCP for Beginners</a></li>
+<li>A2A : <a href="https://a2a-protocol.org/latest/topics/key-concepts/">concepts</a> · <a href="https://a2a-protocol.org/latest/specification/">spécification 1.0</a> · <a href="https://a2a-protocol.org/latest/topics/a2a-and-mcp/">A2A et MCP</a></li>
+<li>Sécurité : <a href="https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices">bonnes pratiques MCP</a> · <a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/">le « trio dangereux »</a></li>
+</ul>
+<p class="caption">Vérifier la révision des spécifications et la version des SDK avant la séance.</p>
+<aside class="notes">Ne pas détailler les liens. Pour reprendre le TP : « créer un serveur » et MCP Inspector. Pour approfondir : la page « A2A et MCP » et l’article sur le « trio dangereux ». Le lien des bonnes pratiques de sécurité pointe vers la révision 2025-11-25, les autres liens de spécification MCP vers 2026-07-28 : à revérifier avant la séance.</aside>
+</section>
+
+<section>
+<h2>Questions ?</h2>
+<p>Quel outil ou quel agent connecteriez-vous à votre projet ?</p>
+<aside class="notes">Clôture de la séance. Si la salle reste silencieuse, s’appuyer sur la question affichée et faire préciser à chaque réponse s’il s’agit d’un outil MCP ou d’un agent A2A, et pourquoi.</aside>
+</section>
+
+</div></div>
+<script src="node_modules/reveal.js/dist/reveal.js"></script>
+<script src="node_modules/reveal.js/plugin/notes/notes.js"></script>
+<script>Reveal.initialize({width:1280,height:720,margin:0.04,hash:true,slideNumber:true,plugins:[RevealNotes]});</script>
+</body>
+</html>
