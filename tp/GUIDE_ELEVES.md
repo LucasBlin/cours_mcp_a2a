@@ -11,7 +11,7 @@ Cochez chaque case au fur et à mesure.
 
 ## Étape 0 — Installer (avant la séance ou 5 premières minutes)
 
-- [ ] Node.js 20 ou plus récent : `node -v`
+- [ ] Node.js 22.22 ou plus récent : `node -v`
 - [ ] Dans le dossier `tp/` :
   ```bash
   npm install
@@ -102,6 +102,7 @@ Répondre à l'oral, à partir de ce que vous avez observé :
 
 | Symptôme | Cause probable |
 |---|---|
+| `npm warn EBADENGINE` pour `@modelcontextprotocol/inspector` | Normal avec Node 22.22 : Inspector recommande 22.23.4 mais fonctionne. Si le paquet cité est `tp-mcp-fichiers`, Node est trop ancien (moins de 22.22). |
 | `spawn node ENOENT` | Inspector lancé directement avec `node` sous Windows : passer par `npm run inspect`. |
 | Inspector ne reçoit plus rien, erreur de parsing | Un `console.log` écrit sur stdout, réservé au JSON-RPC : utiliser `console.error`. |
 | La modification n'a aucun effet | Le serveur n'a pas été relancé : **Disconnect** puis **Connect**. |

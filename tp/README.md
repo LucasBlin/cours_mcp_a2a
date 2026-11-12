@@ -7,7 +7,9 @@
 
 ## Démarrer
 
-Node.js 20 ou plus récent.
+Node.js 22.22 ou plus récent, comme le TP Mastra. Vérifier avec `node -v` ; avec nvm, `nvm use` lit le fichier `.nvmrc`.
+
+Avec Node 22.22, `npm install` affiche un avertissement `EBADENGINE` pour `@modelcontextprotocol/inspector`, qui recommande Node 22.23.4 : il est sans conséquence, tout le TP fonctionne.
 
 ```bash
 npm install

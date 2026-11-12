@@ -50,23 +50,38 @@
 
 <section>
 <h3>Rappel : un agent appelle des outils</h3>
-<svg class="dg" viewBox="0 0 1180 410" role="img" aria-label="Diagramme de séquence du tool calling : l’utilisateur pose une question, l’application transmet la question et la description des outils au modèle, le modèle demande un appel, l’application exécute l’outil, renvoie le résultat au modèle puis la réponse à l’utilisateur.">
-<line class="life" x1="130" y1="46" x2="130" y2="410"/><line class="life" x1="440" y1="46" x2="440" y2="410"/><line class="life" x1="750" y1="46" x2="750" y2="410"/><line class="life" x1="1050" y1="46" x2="1050" y2="410"/>
+<svg class="dg" viewBox="0 0 1180 440" role="img" aria-label="Diagramme de séquence du tool calling : l’utilisateur pose une question, l’application transmet la question et la description des outils au modèle. Dans une boucle, le modèle demande un appel, l’application exécute elle-même l’outil et renvoie le résultat au modèle. Le modèle donne enfin la réponse finale, transmise à l’utilisateur.">
+<line class="life" x1="130" y1="46" x2="130" y2="440"/><line class="life" x1="440" y1="46" x2="440" y2="440"/><line class="life" x1="750" y1="46" x2="750" y2="440"/><line class="life" x1="1050" y1="46" x2="1050" y2="440"/>
 <rect class="soft" x="20" y="0" width="220" height="46"/><text class="d" x="130" y="23">Utilisateur</text>
 <rect class="blue" x="330" y="0" width="220" height="46"/><text x="440" y="23">Application</text>
 <rect class="ink" x="640" y="0" width="220" height="46"/><text x="750" y="23">Modèle LLM</text>
 <rect class="ink" x="940" y="0" width="220" height="46"/><text x="1050" y="23">Outil / API</text>
-<line class="e" x1="130" y1="92" x2="440" y2="92" marker-end="url(#ah)"/><text class="l" x="285" y="78">1 · question</text>
-<line class="e" x1="440" y1="138" x2="750" y2="138" marker-end="url(#ah)"/><text class="l" x="595" y="124">2 · question + description des outils</text>
-<line class="e r" x1="750" y1="184" x2="440" y2="184" marker-end="url(#ah)"/><text class="l" x="595" y="170">3 · demande d’appel : nom + arguments</text>
-<line class="e" x1="440" y1="230" x2="1050" y2="230" marker-end="url(#ah)"/><text class="l" x="900" y="216">4 · exécution</text>
-<line class="e r" x1="1050" y1="276" x2="440" y2="276" marker-end="url(#ah)"/><text class="l" x="900" y="262">5 · résultat</text>
-<line class="e" x1="440" y1="322" x2="750" y2="322" marker-end="url(#ah)"/><text class="l" x="595" y="308">6 · résultat de l’outil</text>
-<line class="e r" x1="750" y1="368" x2="440" y2="368" marker-end="url(#ah)"/><text class="l" x="595" y="354">7 · réponse finale</text>
-<line class="e r" x1="440" y1="398" x2="130" y2="398" marker-end="url(#ah)"/><text class="l" x="285" y="384">8 · réponse</text>
+<line class="e" x1="130" y1="86" x2="440" y2="86" marker-end="url(#ah)"/><text class="l" x="285" y="72">1 · question</text>
+<line class="e" x1="440" y1="132" x2="750" y2="132" marker-end="url(#ah)"/><text class="l" x="595" y="118">2 · question + description des outils</text>
+<rect class="frame" x="330" y="160" width="830" height="190"/>
+<rect class="ink" x="960" y="160" width="200" height="28"/><text class="s" x="1060" y="174">boucle · étapes 3 à 6</text>
+<line class="e r" x1="750" y1="210" x2="440" y2="210" marker-end="url(#ah)"/><text class="l" x="595" y="196">3 · demande d’appel : nom + arguments</text>
+<line class="e k" x1="440" y1="254" x2="1050" y2="254" marker-end="url(#ahk)"/><text class="l" x="900" y="240">4 · l’application exécute</text>
+<line class="e k r" x1="1050" y1="292" x2="440" y2="292" marker-end="url(#ahk)"/><text class="l" x="900" y="278">5 · résultat</text>
+<line class="e" x1="440" y1="330" x2="750" y2="330" marker-end="url(#ah)"/><text class="l" x="595" y="316">6 · résultat de l’outil</text>
+<line class="e r" x1="750" y1="384" x2="440" y2="384" marker-end="url(#ah)"/><text class="l" x="595" y="370">7 · réponse finale</text>
+<line class="e r" x1="440" y1="428" x2="130" y2="428" marker-end="url(#ah)"/><text class="l" x="285" y="414">8 · réponse</text>
 </svg>
 <p class="caption">Le modèle ne fait que <strong>demander</strong> l’appel : c’est l’application qui exécute, contrôle les permissions et valide les arguments.</p>
-<aside class="notes">Rappel du cours précédent : un agent LLM = LLM + outils + mémoire + boucle. Les étapes 2 à 6 peuvent se répéter. Insister sur le point 3 : la sortie du modèle est une donnée structurée, jamais une exécution. Tout ce qui suit dans le cours standardise les flèches 2, 4 et 5.</aside>
+<aside class="notes">
+<p>Rappel du cours précédent : un agent LLM = LLM + outils + mémoire + boucle. Exemple à dérouler : l’utilisateur demande « Quel temps fera-t-il à Lyon demain ? » à une application qui dispose d’un outil météo.</p>
+<ol>
+<li><strong>Question</strong> : l’utilisateur tape sa question dans l’application.</li>
+<li><strong>Question + outils</strong> : l’application l’envoie au modèle, avec la liste des outils disponibles : « tu peux appeler meteo(ville, date), voici ce qu’il fait ». Le modèle ne connaît que ces descriptions.</li>
+<li><strong>Demande d’appel</strong> : le modèle ne sait pas la météo, il répond donc par un message structuré : « appelle meteo avec ville = Lyon, date = demain ». C’est une donnée, pas une action : le modèle n’a rien exécuté.</li>
+<li><strong>L’application exécute</strong> : c’est elle qui appelle vraiment l’API météo, après avoir vérifié qu’elle a le droit de le faire et que les arguments sont valides.</li>
+<li><strong>Résultat</strong> : l’API répond « 14 °C, pluie ».</li>
+<li><strong>Résultat au modèle</strong> : l’application renvoie ce résultat au modèle, dans la suite de la conversation.</li>
+<li><strong>Réponse finale</strong> : le modèle a ce qu’il lui faut et rédige la réponse : « Demain à Lyon, 14 °C et de la pluie : prenez un parapluie. » S’il lui manquait encore quelque chose, il aurait demandé un autre appel : on repart à l’étape 3, c’est la boucle du cadre pointillé.</li>
+<li><strong>Réponse</strong> : l’application affiche la réponse à l’utilisateur.</li>
+</ol>
+<p>À faire retenir : le modèle décide <em>quoi</em> appeler, l’application décide <em>si</em> on l’appelle et c’est elle qui l’exécute (flèches noires). Tout ce qui suit dans le cours standardise les flèches 2, 4 et 5 : comment l’application découvre les outils, et comment elle les appelle.</p>
+</aside>
 </section>
 
 <section>
@@ -98,7 +113,7 @@
 </g>
 </svg>
 <p class="caption">Même raisonnement que LSP pour les éditeurs de code : un contrat commun découple ceux qui consomment de ceux qui exposent.</p>
-<aside class="notes">Sans standard, chaque application réécrit pour chaque service le contrat, l’authentification, le format des résultats. Language Server Protocol (2016) a résolu le même problème entre éditeurs et langages ; MCP s’en inspire explicitement, jusqu’au choix de JSON-RPC. Question à poser à la salle : qu’est-ce qui, dans un connecteur, est réellement spécifique ?</aside>
+<aside class="notes">Sans standard, chaque application réécrit pour chaque service le contrat, l’authentification, le format des résultats. Language Server Protocol (2016) a résolu le même problème entre éditeurs et langages ; MCP s’en inspire explicitement, jusqu’au choix de JSON-RPC. Question à poser à la salle : qu’est-ce qui, dans un connecteur, est réellement spécifique ? Réponse attendue : seule la logique métier du service (quelles requêtes exécuter, comment transformer le résultat, quels droits propres au service). Tout le reste se répète d’un connecteur à l’autre : annoncer ses capacités (nom, description, schéma), le format des messages, le transport, la façon de signaler une erreur, la mécanique d’authentification. C’est cette partie que le protocole standardise : la partie spécifique est écrite une fois par service (le serveur), la partie générique une fois par application (le client), d’où N + M. Dans le TP : fichiers.js est la partie spécifique, server.js la partie générique. Nuance : la description d’un outil a un format standard mais un contenu spécifique, et c’est elle qui conditionne le bon usage par le modèle.</aside>
 </section>
 
 <section>
@@ -186,13 +201,13 @@
 <table>
 <thead><tr><th>Rôle</th><th>En une phrase</th><th>Exemple</th><th>Ce qu’il ne fait pas</th></tr></thead>
 <tbody>
-<tr><td>Hôte</td><td>L’application de l’utilisateur : elle dialogue avec le LLM et autorise ou refuse chaque appel.</td><td>Claude Desktop, un IDE, l’agent Mastra<br><em>TP : Inspector</em></td><td>Exécuter l’outil</td></tr>
-<tr><td>Client MCP</td><td>Un connecteur intégré à l’hôte, un par serveur : il transporte les messages.</td><td>Le module MCP de l’hôte<br><em>TP : le client d’Inspector</em></td><td>Choisir l’outil à appeler</td></tr>
-<tr><td>Serveur MCP</td><td>Un programme qui publie des outils et les exécute avec ses propres contrôles.</td><td>Serveur GitHub, fichiers, SQL<br><em>TP : <code>node src/server.js</code></em></td><td>Voir la conversation ou piloter le modèle</td></tr>
+<tr><td>Hôte</td><td>L’application de l’utilisateur : elle dialogue avec le LLM et autorise ou refuse chaque appel.</td><td>Claude Desktop, un IDE, l’agent Mastra<br><em>TP : Inspector</em></td><td>Exécuter les outils MCP : il en confie l’exécution aux serveurs</td></tr>
+<tr><td>Client MCP</td><td>Un connecteur intégré à l’hôte, un par serveur : il transporte les messages.</td><td>Le module MCP de l’hôte<br><em>TP : le client d’Inspector</em></td><td>Choisir l’outil ni autoriser l’appel</td></tr>
+<tr><td>Serveur MCP</td><td>Un programme qui publie des outils et les exécute avec ses propres contrôles.</td><td>Serveur GitHub, fichiers, SQL<br><em>TP : <code>node src/server.js</code></em></td><td>Voir la conversation : il ne reçoit que les arguments de l’appel</td></tr>
 </tbody>
 </table>
 <p class="caption">Le LLM <strong>propose</strong> un appel → l’hôte l’<strong>autorise</strong> → le client le <strong>transmet</strong> → le serveur <strong>vérifie et exécute</strong>.</p>
-<aside class="notes">Le client n’est pas un programme séparé : c’est un composant de l’hôte, un par serveur connecté. La décision d’appeler un outil est prise par le LLM, mais la décision d’exécuter l’appel est prise par l’hôte : ce découplage est ce qui permet le « human in the loop » (confirmation avant une action sensible). Les contrôles sont doubles : l’hôte filtre ce que le modèle demande, le serveur vérifie ce qu’il reçoit, car découvrir un outil ne donne aucun droit. Dans le TP, Inspector joue à la fois l’hôte et le client, et il n’y a pas de LLM : c’est vous qui choisissez l’appel.</aside>
+<aside class="notes">Lien avec la slide de rappel : sans MCP, « l’application » décidait et exécutait. Avec MCP, ce rôle se partage : l’hôte garde la décision (autoriser ou refuser), le serveur prend l’exécution. Un hôte peut toutefois garder ses propres outils internes, hors MCP, qu’il exécute lui-même. Le client n’est pas un programme séparé : c’est un composant de l’hôte, un par serveur connecté. La décision d’appeler un outil est prise par le LLM, mais la décision d’exécuter l’appel est prise par l’hôte : ce découplage est ce qui permet le « human in the loop » (confirmation avant une action sensible). Les contrôles sont doubles : l’hôte filtre ce que le modèle demande, le serveur vérifie ce qu’il reçoit, car découvrir un outil ne donne aucun droit. Dans le TP, Inspector joue à la fois l’hôte et le client, et il n’y a pas de LLM : c’est vous qui choisissez l’appel.</aside>
 </section>
 
 <section>
@@ -296,8 +311,8 @@ serveStdio(() =&gt; {
 </section>
 
 <section>
-<h3>Sur le fil : JSON-RPC 2.0</h3>
-<pre class="compact"><code>// Requête : client → serveur
+<h3>JSON-RPC 2.0</h3>
+<pre class="compact"><code>// Étape 6 du cycle · requête tools/call : client → serveur
 { "jsonrpc": "2.0", "id": 2, "method": "tools/call",
   "params": {
     "name": "chercher_document",
@@ -306,7 +321,7 @@ serveStdio(() =&gt; {
       "io.modelcontextprotocol/protocolVersion": "2026-07-28",
       "io.modelcontextprotocol/clientCapabilities": {} } } }
 
-// Réponse : serveur → client
+// Étape 7 du cycle · résultat : serveur → client
 { "jsonrpc": "2.0", "id": 2,
   "result": {
     "resultType": "complete",
@@ -334,20 +349,27 @@ serveStdio(() =&gt; {
 
 <section>
 <h3>Quand le serveur a besoin d’une précision</h3>
-<svg class="dg" viewBox="0 0 1180 250" role="img" aria-label="Le client appelle un outil, le serveur répond par un résultat input_required contenant une question, le client renvoie le même appel avec la réponse de l’utilisateur, le serveur renvoie un résultat complet.">
-<line class="life" x1="170" y1="46" x2="170" y2="250"/><line class="life" x1="1010" y1="46" x2="1010" y2="250"/>
-<rect class="blue" x="60" y="0" width="220" height="46"/><text x="170" y="23">Client MCP</text>
-<rect class="ink" x="900" y="0" width="220" height="46"/><text x="1010" y="23">Serveur MCP</text>
-<line class="e" x1="170" y1="92" x2="1010" y2="92" marker-end="url(#ah)"/><text class="l" x="590" y="78">1 · tools/call  reserver_salle(salle : "B12")</text>
-<line class="e r" x1="1010" y1="140" x2="170" y2="140" marker-end="url(#ah)"/><text class="l" x="590" y="126">2 · resultType : "input_required" · inputRequests : « Pour quelle date ? »</text>
-<line class="e" x1="170" y1="188" x2="1010" y2="188" marker-end="url(#ah)"/><text class="l" x="590" y="174">3 · même appel + inputResponses : « 14 novembre »</text>
-<line class="e r" x1="1010" y1="236" x2="170" y2="236" marker-end="url(#ah)"/><text class="l" x="590" y="222">4 · resultType : "complete" · réservation confirmée</text>
+<svg class="dg" viewBox="0 0 1180 350" role="img" aria-label="Le client de l’hôte appelle l’outil reserver_salle. Le serveur répond input_required avec une question et un requestState. L’hôte affiche la question à l’utilisateur, qui répond 14 novembre. Le client rejoue le même appel avec la réponse et le requestState. Le serveur confirme la réservation, et ce résultat est transmis au LLM.">
+<line class="life" x1="130" y1="46" x2="130" y2="350"/><line class="life" x1="500" y1="46" x2="500" y2="350"/><line class="life" x1="1040" y1="46" x2="1040" y2="350"/>
+<rect class="soft" x="20" y="0" width="220" height="46"/><text class="d" x="130" y="23">Utilisateur</text>
+<rect class="blue" x="370" y="0" width="260" height="46"/><text x="500" y="23">Hôte + client MCP</text>
+<rect class="ink" x="930" y="0" width="220" height="46"/><text x="1040" y="23">Serveur MCP</text>
+<line class="e" x1="500" y1="92" x2="1040" y2="92" marker-end="url(#ah)"/><text class="l" x="770" y="78">1 · tools/call reserver_salle(salle : "B12")</text>
+<line class="e r" x1="1040" y1="140" x2="500" y2="140" marker-end="url(#ah)"/><text class="l" x="770" y="126">2 · input_required : « Pour quelle date ? » + requestState</text>
+<line class="e k" x1="500" y1="188" x2="130" y2="188" marker-end="url(#ahk)"/><text class="l" x="315" y="174">3 · formulaire : « Pour quelle date ? »</text>
+<line class="e k r" x1="130" y1="236" x2="500" y2="236" marker-end="url(#ahk)"/><text class="l" x="315" y="222">4 · « 14 novembre »</text>
+<line class="e" x1="500" y1="284" x2="1040" y2="284" marker-end="url(#ah)"/><text class="l" x="770" y="270">5 · même appel + inputResponses + requestState</text>
+<line class="e r" x1="1040" y1="332" x2="500" y2="332" marker-end="url(#ah)"/><text class="l" x="770" y="318">6 · complete : réservation confirmée → au LLM</text>
 </svg>
-<ul class="medium" style="margin-top:20px">
-<li><strong>Élicitation</strong> : le serveur demande une information à l’utilisateur, via l’hôte.</li>
-<li>Le serveur ne garde rien en mémoire entre 2 et 3 : c’est le client qui rejoue l’appel.</li>
+<ul class="medium" style="margin-top:18px">
+<li><strong>Élicitation</strong> : la question va à l’<strong>utilisateur</strong>, pas au LLM. Le LLM n’attend que le résultat final.</li>
+<li>Le serveur ne garde rien en mémoire : son contexte voyage dans <code>requestState</code>, que le client renvoie tel quel.</li>
 </ul>
-<aside class="notes">Mécanisme appelé « multi round-trip requests » dans la révision 2026-07-28. Il remplace les requêtes initiées par le serveur. Retenir l’idée, pas le détail des champs : on retrouve exactement le même besoin côté A2A avec l’état input-required.</aside>
+<aside class="notes">
+<p>Déroulé : le LLM a demandé reserver_salle(salle : "B12") ; pour lui, l’appel est simplement en cours. (1) Le client envoie l’appel. (2) Il manque la date : le serveur répond input_required, avec une question (inputRequests, ici une élicitation sous la clé « date ») et un requestState, une valeur opaque où il range son contexte. (3) L’hôte affiche un formulaire à l’utilisateur, construit à partir du schéma demandé. (4) L’utilisateur répond, ou refuse, ou annule. (5) Le client rejoue l’appel initial, avec un nouvel id JSON-RPC : mêmes arguments, plus inputResponses (la réponse rangée sous la même clé « date ») et le requestState recopié à l’identique. (6) Le serveur a tout ce qu’il lui faut et confirme ; ce résultat remonte au LLM comme n’importe quel résultat d’outil.</p>
+<p>Le LLM ne voit ni la question ni la réponse intermédiaires. À distinguer de deux cas : une erreur isError remonte au LLM, qui corrige lui-même son appel ; le sampling (déprécié) demandait une génération au LLM de l’hôte. Ici, c’est l’humain qui fournit une information que le modèle ne doit pas inventer.</p>
+<p>Le requestState transite par le client : le serveur doit le traiter comme une donnée non fiable et le protéger (signature ou chiffrement). Mécanisme appelé « multi round-trip requests » dans la révision 2026-07-28 ; il remplace les requêtes initiées par le serveur. On retrouve le même besoin côté A2A avec l’état input-required.</p>
+</aside>
 </section>
 
 <section>
@@ -491,7 +513,7 @@ serveStdio(() =&gt; {
 <rect class="ink" x="900" y="210" width="200" height="56"/><text x="1000" y="238">canceled</text>
 <rect class="ink" x="900" y="295" width="200" height="56"/><text x="1000" y="323">rejected</text>
 </svg>
-<p class="caption">Sur le fil : <code>TASK_STATE_WORKING</code>, <code>TASK_STATE_INPUT_REQUIRED</code>… Une tâche terminée n’accepte plus de message : la suite passe par une nouvelle tâche du même contexte.</p>
+<p class="caption">Valeurs transmises dans les messages : <code>TASK_STATE_WORKING</code>, <code>TASK_STATE_INPUT_REQUIRED</code>… Une tâche terminée n’accepte plus de message : la suite passe par une nouvelle tâche du même contexte.</p>
 <aside class="notes">Deux états « interrompus » : input-required et auth-required. Ils rendent explicite ce que le tool calling cache : un agent distant peut avoir besoin d’un humain ou d’un droit supplémentaire. Faire remarquer la parenté avec l’élicitation MCP vue plus tôt. Schéma simplifié : une tâche peut aussi échouer ou être annulée depuis un état interrompu.</aside>
 </section>
 
@@ -513,7 +535,7 @@ serveStdio(() =&gt; {
 </section>
 
 <section>
-<h3>Sur le fil : SendMessage</h3>
+<h3>SendMessage</h3>
 <pre class="compact"><code>// Requête : agent client → agent distant
 { "jsonrpc": "2.0", "id": 1, "method": "SendMessage",
   "params": { "message": {
@@ -609,12 +631,12 @@ serveStdio(() =&gt; {
 <section>
 <h3>Limites et questions ouvertes</h3>
 <div class="grid">
-<div class="card tight"><h3>Sécurité et identité</h3><ul><li>Au nom de qui un agent agit-il, sur plusieurs sauts de délégation ?</li><li>Une carte ou une description peut mentir : la confiance ne se déduit pas du protocole.</li></ul></div>
-<div class="card tight"><h3>Fiabilité</h3><ul><li>Les erreurs se composent d’un agent à l’autre.</li><li>Comment évaluer un système dont une partie est opaque ?</li></ul></div>
+<div class="card tight"><h3>Sécurité et identité</h3><ul><li><strong>Au nom de qui ?</strong> L’utilisateur sollicite l’agent A, qui délègue à B, qui appelle un outil : avec quels droits ? Pas encore de réponse standard.</li><li><strong>Déclarer n’est pas prouver.</strong> Une Agent Card annonce «&nbsp;expert juridique&nbsp;», un outil «&nbsp;lecture seule&nbsp;» : le protocole transmet ces affirmations sans les vérifier.</li></ul></div>
+<div class="card tight"><h3>Fiabilité</h3><ul><li><strong>Les erreurs se multiplient.</strong> Trois agents fiables à 90&nbsp;% chacun, enchaînés : environ 73&nbsp;% de réussite (0,9&nbsp;×&nbsp;0,9&nbsp;×&nbsp;0,9).</li><li><strong>Une boîte noire s’évalue mal.</strong> On ne voit que l’artefact rendu par l’agent distant, pas les outils ni le raisonnement qui l’ont produit.</li></ul></div>
 <div class="card tight"><h3>Coût</h3><ul><li>Contexte consommé par les descriptions d’outils.</li><li>Appels LLM multipliés par la délégation.</li></ul></div>
 <div class="card tight"><h3>Maturité</h3><ul><li>Spécifications récentes, ruptures entre révisions.</li><li>Registres, observabilité et gouvernance encore en construction.</li></ul></div>
 </div>
-<aside class="notes">Slide de prise de recul pour le niveau master. Ces questions sont de bons sujets de mémoire ou de veille. Rappeler que les protocoles FIPA ont échoué en partie par excès de complexité : l’adoption se joue sur la simplicité d’implémentation.</aside>
+<aside class="notes">Slide de prise de recul pour le niveau master. Ces questions sont de bons sujets de mémoire ou de veille. Identité : sur une chaîne de délégation, chaque saut peut perdre l’identité de l’utilisateur d’origine (B ne connaît que A) ou au contraire transmettre trop de droits (A passe son jeton complet à B) ; c’est le problème du « confused deputy », un intermédiaire de confiance qu’on amène à agir avec des droits qui ne sont pas ceux du demandeur. Déclaratif : la signature d’une Agent Card prouve qui l’a publiée, pas que son contenu est vrai ; une annotation « lecture seule » sur un outil est une indication du serveur, à ignorer si le serveur n’est pas de confiance. Fiabilité : le calcul à 90 % suppose des erreurs indépendantes, c’est un ordre de grandeur ; en pratique un agent peut aussi rattraper l’erreur d’un autre, ou l’amplifier. Avec A2A, l’évaluation se fait sur les artefacts et les états de la tâche : vérifier le résultat (provenance, cohérence, conformité à la demande) plutôt que le processus. Rappeler que les protocoles FIPA ont échoué en partie par excès de complexité : l’adoption se joue sur la simplicité d’implémentation.</aside>
 </section>
 
 <section>

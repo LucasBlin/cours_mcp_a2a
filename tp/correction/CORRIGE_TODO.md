@@ -7,7 +7,9 @@ npm test          # tests de la correction
 npm run inspect   # Inspector sur la correction
 ```
 
-Le code ci-dessous a été vérifié sous Windows, Node 22, SDK `@modelcontextprotocol/server` 2.4.0, Inspector 2.15.0 :
+Version de Node : 22.22 ou plus récent, comme le TP Mastra. MCP Inspector 2.15 recommande 22.23.4 et affiche un avertissement `EBADENGINE` en dessous, sans conséquence. On garde Inspector 2.15 plutôt que 2.13 (compatible 22.19 sans avertissement) : la 2.15 corrige quatre vulnérabilités présentes de 2.0 à 2.14.
+
+Le code ci-dessous a été vérifié sous Windows avec Node 22.22.0 (installation propre par `npm ci`) et Node 22.19.0, SDK `@modelcontextprotocol/server` 2.4.0, Inspector 2.15.0 en ligne de commande et en interface web. Non vérifié sous macOS ni sous Linux. Résultats :
 - `npm test` dans `correction/` : 5 tests réussis, 0 échec, 0 en attente ;
 - `npm test` dans `tp/` (squelette) : 0 échec, 4 tests `todo` ;
 - par Inspector en ligne de commande : les cas `.`, `voyages/lisbonne`, `voyages/tokyo`, `notes.md`, `../..` et `C:/Windows` donnent les résultats de [SCHEMA_ET_ATTENDU.md](../SCHEMA_ET_ATTENDU.md) ;

@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "description": "Correction du TP. Utilise les dépendances installées dans le dossier parent (npm install dans tp/).",
+  "engines": {
+    "node": ">=22.22.0"
+  },
   "scripts": {
     "start": "node src/server.js",
     "inspect": "node ../scripts/inspecter.js src/server.js",
