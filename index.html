@@ -198,18 +198,18 @@
 <section>
 <h3>Trois primitives, trois pilotes</h3>
 <table>
-<thead><tr><th>Primitive</th><th>Rôle</th><th>Qui décide de l’utiliser ?</th><th>Exemple documentaire</th></tr></thead>
+<thead><tr><th>Primitive</th><th>Sert à</th><th>Qui décide ?</th><th>Exemple</th></tr></thead>
 <tbody>
-<tr><td>Tool</td><td>Exécuter une action ou un calcul.</td><td>Le <strong>modèle</strong>, sous contrôle de l’hôte.</td><td><code>chercher_document("authentification")</code></td></tr>
-<tr><td>Resource</td><td>Lire une donnée identifiée par une URI.</td><td>L’<strong>application</strong> hôte.</td><td><code>docs://securite/auth</code></td></tr>
-<tr><td>Prompt</td><td>Fournir un gabarit de messages paramétré.</td><td>L’<strong>utilisateur</strong>, par exemple via une commande.</td><td><code>resumer_document(public="développeur")</code></td></tr>
+<tr><td>Tool</td><td>Agir ou calculer.</td><td>Le <strong>modèle</strong>, sous contrôle de l’hôte</td><td>Serveur GitHub : le modèle appelle <code>create_issue</code> quand la conversation le demande<br><em>TP : <code>lister_dossier</code></em></td></tr>
+<tr><td>Resource</td><td>Lire une donnée désignée par une URI.</td><td>L’<strong>application</strong> hôte</td><td>IDE : joint au contexte le fichier ouvert, <code>file:///projet/README.md</code><br><em>TP, bonus : <code>file://voyages/rome/itineraire.md</code></em></td></tr>
+<tr><td>Prompt</td><td>Proposer un modèle de demande paramétré.</td><td>L’<strong>utilisateur</strong>, via une commande</td><td>Claude Code : un prompt « revue de PR » apparaît comme commande <code>/mcp__github__revue_pr</code><br><em>TP, bonus : <code>/resumer-voyage destination=Rome</code></em></td></tr>
 </tbody>
 </table>
 <ul class="medium" style="margin-top:22px">
 <li>Méthodes : <code>tools/list</code> · <code>tools/call</code>, <code>resources/list</code> · <code>resources/read</code>, <code>prompts/list</code> · <code>prompts/get</code>.</li>
 <li>Un prompt MCP renvoie des messages, pas une réponse générée.</li>
 </ul>
-<aside class="notes">La colonne « qui décide » est la clé de lecture de la spécification : model-controlled, application-controlled, user-controlled. En pratique, la majorité des serveurs n’exposent que des tools. Une resource peut être du texte ou du binaire ; son URI n’est pas forcément une URL HTTP.</aside>
+<aside class="notes">La colonne « qui décide » est la clé de lecture de la spécification : model-controlled, application-controlled, user-controlled. Lire les exemples sous cet angle : créer un ticket est une action que le modèle choisit en cours de conversation ; le fichier ouvert dans l’IDE est ajouté au contexte par l’application, sans que le modèle le demande ; la revue de PR est lancée par l’utilisateur, et le serveur ne fait que fournir le texte de la demande. Le même contenu peut être exposé des deux façons : dans le TP, lister un dossier est un tool (le modèle choisit le chemin), lire un itinéraire pourrait être une resource (l’hôte choisit quoi joindre). En pratique, la majorité des serveurs n’exposent que des tools. Une resource peut être du texte ou du binaire ; son URI n’est pas forcément une URL HTTP. Les noms create_issue et revue_pr sont illustratifs : vérifier ceux du serveur utilisé en démonstration.</aside>
 </section>
 
 <section class="code-compare">
