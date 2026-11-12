@@ -226,21 +226,23 @@ app.post('/recherche', async (req, res) =&gt; {
   res.json(result);
 });
 app.listen(3000);</code></pre></div>
-<div><h4>Serveur MCP · SDK TypeScript v1</h4><pre><code>import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { z } from 'zod';
+<div><h4>Serveur MCP · SDK TypeScript v2</h4><pre><code>import { McpServer } from '@modelcontextprotocol/server';
+import { serveStdio } from '@modelcontextprotocol/server/stdio';
+import * as z from 'zod/v4';
 import { chercherDocument } from './recherche.js';
 
-const server = new McpServer({ name: 'docs', version: '1.0.0' });
-server.registerTool('chercher_document', {
-  description: 'Recherche dans le catalogue',
-  inputSchema: { requete: z.string() }
-}, async (args) =&gt; ({ content: [{ type: 'text',
-  text: JSON.stringify(await chercherDocument(args)) }] }));
-await server.connect(new StdioServerTransport());</code></pre></div>
+serveStdio(() =&gt; {
+  const server = new McpServer({ name: 'docs', version: '1.0.0' });
+  server.registerTool('chercher_document', {
+    description: 'Recherche dans le catalogue',
+    inputSchema: z.object({ requete: z.string() })
+  }, async (args) =&gt; ({ content: [{ type: 'text',
+    text: JSON.stringify(await chercherDocument(args)) }] }));
+  return server;
+});</code></pre></div>
 </div>
 <p class="code-result"><strong>Même résultat métier.</strong> Côté MCP, le nom, la description et le schéma sont découvrables à l’exécution par n’importe quel client compatible.</p>
-<aside class="notes">Les exemples supposent une fonction métier et les dépendances installées. Une API peut publier un contrat OpenAPI ; la différence tient à la découverte à l’exécution et au cycle d’intégration standardisé, pas à une supériorité technique. Extraits pédagogiques : pas de gestion d’erreur ni de validation côté Express. Vérifier l’API du SDK installé avant la séance.</aside>
+<aside class="notes">Les exemples supposent une fonction métier et les dépendances installées. Une API peut publier un contrat OpenAPI ; la différence tient à la découverte à l’exécution et au cycle d’intégration standardisé, pas à une supériorité technique. Extraits pédagogiques : pas de gestion d’erreur ni de validation côté Express. Le SDK v2 (@modelcontextprotocol/server) implémente la révision 2026-07-28 ; le paquet v1 @modelcontextprotocol/sdk s’arrête à 2025-11-25. serveStdio reçoit une fabrique de serveurs : il sert un client récent (server/discover) comme un client de l’ancienne génération (initialize). Un server.connect(new StdioServerTransport()) ne servirait que l’ancienne génération.</aside>
 </section>
 
 <section>
@@ -640,8 +642,8 @@ await server.connect(new StdioServerTransport());</code></pre></div>
 <li>Retourner un indicateur de faisabilité.</li>
 <li>Tester avec MCP Inspector, sans assistant ni clé d’API.</li>
 </ul>
-<p class="caption">45 minutes · transport stdio · données fictives. Même domaine que le TP Mastra : la préparation d’un voyage.</p>
-<aside class="notes">MCP Inspector joue le rôle de client de test : connexion au serveur local, inspection des outils et des schémas, appels manuels, observation des résultats et des erreurs. Le dépôt de TP et son squelette restent à préparer.</aside>
+<p class="caption">45 minutes · transport stdio · données fictives · dossier <code>tp/</code> : <code>npm install</code> puis <code>npm run inspect</code>. Même domaine que le TP Mastra : la préparation d’un voyage.</p>
+<aside class="notes">MCP Inspector joue le rôle de client de test : connexion au serveur local, inspection des outils et des schémas, appels manuels, observation des résultats et des erreurs. Le squelette est dans tp/src (TODO numérotés de 1 à 4), la correction dans tp/solution, à retirer avant distribution. Sous Windows, passer par npm run inspect : lancé directement avec « node », Inspector peut échouer avec spawn node ENOENT.</aside>
 </section>
 
 <section>
@@ -655,7 +657,7 @@ await server.connect(new StdioServerTransport());</code></pre></div>
 </tbody>
 </table>
 <p class="caption">Le troisième cas est le plus instructif : qui rejette l’entrée, le schéma ou votre code ? Sous quelle forme l’erreur revient-elle ?</p>
-<aside class="notes">Faire observer la différence entre l’erreur de validation du schéma (budget manquant) et l’erreur métier (durée négative si le schéma ne l’interdit pas), et le champ isError du résultat.</aside>
+<aside class="notes">Réponse attendue, vérifiée avec la correction : si le schéma déclare nb_jours ≥ 1 et les quatre champs requis, c’est le SDK qui rejette l’entrée, avant le code métier. L’erreur ne revient pas comme une erreur JSON-RPC mais comme un résultat isError: true dont le texte nomme le champ fautif (« nb_jours: Too small: expected number to be &gt;=1 ») : le modèle peut le lire et corriger son appel. Les erreurs JSON-RPC sont réservées au protocole (méthode inconnue, version non prise en charge). Moralité : mettre les contraintes dans le schéma, que le modèle voit aussi avant d’appeler.</aside>
 </section>
 
 <section>
@@ -663,7 +665,7 @@ await server.connect(new StdioServerTransport());</code></pre></div>
 <table>
 <thead><tr><th>Durée</th><th>Action</th></tr></thead>
 <tbody>
-<tr><td>5 min</td><td>Démarrer le squelette et s’y connecter avec Inspector.</td></tr>
+<tr><td>5 min</td><td><code>npm run inspect</code> : se connecter au squelette avec Inspector.</td></tr>
 <tr><td>10 min</td><td>Déclarer l’outil et son schéma.</td></tr>
 <tr><td>15 min</td><td>Implémenter le calcul et les validations.</td></tr>
 <tr><td>10 min</td><td>Tester les trois cas et lire les messages JSON-RPC échangés.</td></tr>
@@ -692,10 +694,10 @@ await server.connect(new StdioServerTransport());</code></pre></div>
 <li>MCP : <a href="https://modelcontextprotocol.io/docs/learn/architecture">architecture et concepts</a> · <a href="https://modelcontextprotocol.io/specification/2026-07-28">spécification 2026-07-28</a> · <a href="https://modelcontextprotocol.io/specification/2026-07-28/changelog">changements</a></li>
 <li>MCP en pratique : <a href="https://modelcontextprotocol.io/docs/develop/build-server">créer un serveur</a> · <a href="https://modelcontextprotocol.io/docs/tools/inspector">MCP Inspector</a> · <a href="https://github.com/microsoft/mcp-for-beginners">MCP for Beginners</a></li>
 <li>A2A : <a href="https://a2a-protocol.org/latest/topics/key-concepts/">concepts</a> · <a href="https://a2a-protocol.org/latest/specification/">spécification 1.0</a> · <a href="https://a2a-protocol.org/latest/topics/a2a-and-mcp/">A2A et MCP</a></li>
-<li>Sécurité : <a href="https://modelcontextprotocol.io/specification/2025-11-25/basic/security_best_practices">bonnes pratiques MCP</a> · <a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/">le « trio dangereux »</a></li>
+<li>Sécurité : <a href="https://modelcontextprotocol.io/specification/2026-07-28/basic/security_best_practices">bonnes pratiques MCP</a> · <a href="https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/">le « trio dangereux »</a></li>
 </ul>
 <p class="caption">Vérifier la révision des spécifications et la version des SDK avant la séance.</p>
-<aside class="notes">Ne pas détailler les liens. Pour reprendre le TP : « créer un serveur » et MCP Inspector. Pour approfondir : la page « A2A et MCP » et l’article sur le « trio dangereux ». Le lien des bonnes pratiques de sécurité pointe vers la révision 2025-11-25, les autres liens de spécification MCP vers 2026-07-28 : à revérifier avant la séance.</aside>
+<aside class="notes">Ne pas détailler les liens. Pour reprendre le TP : « créer un serveur » et MCP Inspector. Pour approfondir : la page « A2A et MCP » et l’article sur le « trio dangereux ». Tous les liens de spécification MCP pointent vers la révision 2026-07-28 : à revérifier avant la séance.</aside>
 </section>
 
 <section>

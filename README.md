@@ -23,5 +23,5 @@ Ouvrir http://localhost:8001. Appuyer sur S pour les notes orateur. La présenta
 
 ## Avant la séance
 
-- Révisions de référence du contenu : MCP 2026-07-28, A2A 1.0. Vérifier qu'elles sont toujours courantes, ainsi que la version du SDK TypeScript MCP montrée dans l'extrait de code.
-- Le squelette du TP est à préparer séparément.
+- Révisions de référence du contenu : MCP 2026-07-28, A2A 1.0, SDK TypeScript MCP v2 (`@modelcontextprotocol/server`). Vérifier qu'elles sont toujours courantes.
+- Le TP est dans `tp/` (consignes dans `tp/README.md`). Retirer `tp/solution/` avant de distribuer le squelette aux étudiants.
