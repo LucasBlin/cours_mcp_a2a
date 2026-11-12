@@ -634,30 +634,31 @@ serveStdio(() =&gt; {
 </section>
 
 <section>
-<h3>Mission : analyser un budget</h3>
-<p>En binôme, compléter un serveur MCP local qui expose l’outil <strong>analyser_budget</strong>.</p>
+<h3>Mission : donner accès aux fichiers</h3>
+<p>En binôme, compléter un serveur MCP local qui expose l’outil <strong>lister_dossier</strong>.</p>
 <ul>
-<li>Déclarer le nom, la description et le schéma d’entrée.</li>
-<li>Calculer le coût total et la marge en euros.</li>
-<li>Retourner un indicateur de faisabilité.</li>
+<li>Déclarer la description et le schéma d’entrée.</li>
+<li>Lister un dossier : nom et type de chaque entrée.</li>
+<li>Empêcher le serveur de sortir de son dossier autorisé.</li>
 <li>Tester avec MCP Inspector, sans assistant ni clé d’API.</li>
 </ul>
-<p class="caption">45 minutes · transport stdio · données fictives · dossier <code>tp/</code> : <code>npm install</code> puis <code>npm run inspect</code>. Même domaine que le TP Mastra : la préparation d’un voyage.</p>
-<aside class="notes">MCP Inspector joue le rôle de client de test : connexion au serveur local, inspection des outils et des schémas, appels manuels, observation des résultats et des erreurs. Le squelette est dans tp/src (TODO numérotés de 1 à 4), la correction dans tp/solution, à retirer avant distribution. Sous Windows, passer par npm run inspect : lancé directement avec « node », Inspector peut échouer avec spawn node ENOENT.</aside>
+<p class="caption">45 minutes · transport stdio · dossier fictif <code>bac-a-sable/</code> · dans <code>tp/</code> : <code>npm install</code> puis <code>npm run inspect</code>.</p>
+<aside class="notes">MCP Inspector joue le rôle de client de test : connexion au serveur local, inspection des outils et des schémas, appels manuels, observation des résultats et des erreurs. Le squelette est dans tp/src (TODO 1 à 4, plus les tests du TODO 5 si le temps le permet) ; les élèves suivent tp/GUIDE_ELEVES.md. La correction est sur la branche correction, dans tp/correction, avec CORRIGE_TODO.md. Lien direct avec la slide « Une frontière de confiance » : un serveur stdio s’exécute avec les droits de l’utilisateur, c’est donc à lui d’appliquer le moindre privilège. Sous Windows, passer par npm run inspect : lancé directement avec « node », Inspector peut échouer avec spawn node ENOENT.</aside>
 </section>
 
 <section>
-<h3>Trois cas à tester</h3>
+<h3>Quatre cas à tester</h3>
 <table>
-<thead><tr><th>Cas</th><th>Entrées</th><th>Attendu</th></tr></thead>
+<thead><tr><th>Cas</th><th><code>chemin</code></th><th>Attendu</th></tr></thead>
 <tbody>
-<tr><td>Faisable</td><td>Budget 1 800 € · 4 jours · 150 €/j · transport 400 €</td><td>Total 1 000 € · marge +800 €</td></tr>
-<tr><td>Impossible</td><td>Budget 500 € · 2 jours · 150 €/j · transport 800 €</td><td>Total 1 100 € · marge −600 €</td></tr>
-<tr><td>Invalide</td><td>Durée négative ou budget manquant</td><td>Erreur explicite, lisible par un modèle</td></tr>
+<tr><td>Valide</td><td><code>.</code> puis <code>voyages/lisbonne</code></td><td>La liste des entrées</td></tr>
+<tr><td>Introuvable</td><td><code>voyages/tokyo</code></td><td>Erreur explicite, sans chemin absolu</td></tr>
+<tr><td>Pas un dossier</td><td><code>notes.md</code></td><td>Erreur explicite</td></tr>
+<tr><td>Évasion</td><td><code>../..</code> ou <code>C:/Windows</code></td><td>Accès refusé</td></tr>
 </tbody>
 </table>
-<p class="caption">Le troisième cas est le plus instructif : qui rejette l’entrée, le schéma ou votre code ? Sous quelle forme l’erreur revient-elle ?</p>
-<aside class="notes">Réponse attendue, vérifiée avec la correction : si le schéma déclare nb_jours ≥ 1 et les quatre champs requis, c’est le SDK qui rejette l’entrée, avant le code métier. L’erreur ne revient pas comme une erreur JSON-RPC mais comme un résultat isError: true dont le texte nomme le champ fautif (« nb_jours: Too small: expected number to be &gt;=1 ») : le modèle peut le lire et corriger son appel. Les erreurs JSON-RPC sont réservées au protocole (méthode inconnue, version non prise en charge). Moralité : mettre les contraintes dans le schéma, que le modèle voit aussi avant d’appeler.</aside>
+<p class="caption">Tester l’évasion <strong>avant</strong> de la corriger : que voit-on ? Qu’en ferait un modèle manipulé par une injection de prompt ?</p>
+<aside class="notes">Réponses vérifiées avec la correction. Avant le TODO 3, « ../.. » liste les dossiers au-dessus du bac à sable : c’est la faille. La correction refuse tout chemin hors racine, puis revérifie après fs.realpath, car un lien symbolique placé dans le bac à sable peut pointer vers C:/Windows (testé avec une jonction). Toutes les erreurs reviennent comme un résultat isError: true avec un message lisible, pas comme une erreur JSON-RPC : le modèle peut lire le message et corriger son appel. Les erreurs JSON-RPC sont réservées au protocole (méthode inconnue, version non prise en charge). Faire remarquer que les messages ne doivent pas divulguer de chemins absolus de la machine.</aside>
 </section>
 
 <section>
@@ -666,13 +667,13 @@ serveStdio(() =&gt; {
 <thead><tr><th>Durée</th><th>Action</th></tr></thead>
 <tbody>
 <tr><td>5 min</td><td><code>npm run inspect</code> : se connecter au squelette avec Inspector.</td></tr>
-<tr><td>10 min</td><td>Déclarer l’outil et son schéma.</td></tr>
-<tr><td>15 min</td><td>Implémenter le calcul et les validations.</td></tr>
-<tr><td>10 min</td><td>Tester les trois cas et lire les messages JSON-RPC échangés.</td></tr>
+<tr><td>10 min</td><td>Décrire l’outil et son schéma, puis lister le dossier.</td></tr>
+<tr><td>15 min</td><td>Constater l’évasion, puis protéger les chemins.</td></tr>
+<tr><td>10 min</td><td>Tester les quatre cas et lire les messages JSON-RPC échangés.</td></tr>
 <tr><td>5 min</td><td>Restitution : rôles de l’hôte, du client et du serveur dans ce que vous avez observé.</td></tr>
 </tbody>
 </table>
-<p class="caption">Pour aller plus loin : ajouter une resource <code>budget://bareme</code>, puis brancher le serveur sur un agent Mastra.</p>
+<p class="caption">Pour aller plus loin : un outil <code>lire_fichier</code>, les fichiers exposés en resources, puis le serveur branché sur un agent Mastra.</p>
 <aside class="notes">Rappeler le piège stdio : aucun console.log sur stdout. L’extension vers Mastra referme la boucle avec le TP précédent : l’agent devient l’hôte, le serveur écrit aujourd’hui devient l’un de ses outils.</aside>
 </section>
 

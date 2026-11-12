@@ -8,7 +8,7 @@ Présentation Reveal.js locale : introduction aux protocoles MCP et A2A pour des
 1. **MCP** : hôte / client / serveur, primitives (tools, resources, prompts), contrat d'outil, cycle d'un appel, JSON-RPC, révisions 2025-11-25 → 2026-07-28, transports, sécurité, limites
 2. **A2A** : acteurs et découverte, Agent Card, objets clés, cycle de vie d'une tâche, scénario de délégation, suivi des tâches longues
 3. **Choisir et combiner** : comparaison, architecture combinée, critères outil / agent, questions ouvertes, exercice de conception
-4. **TP** : serveur MCP `analyser_budget` testé avec MCP Inspector
+4. **TP** : serveur MCP `lister_dossier`, limité à un dossier, testé avec MCP Inspector
 
 Les schémas sont des SVG en ligne dans `index.html`, stylés par les classes `.dg` de `custom.css`.
 
@@ -24,4 +24,4 @@ Ouvrir http://localhost:8001. Appuyer sur S pour les notes orateur. La présenta
 ## Avant la séance
 
 - Révisions de référence du contenu : MCP 2026-07-28, A2A 1.0, SDK TypeScript MCP v2 (`@modelcontextprotocol/server`). Vérifier qu'elles sont toujours courantes.
-- Le TP est dans `tp/` (consignes dans `tp/README.md`). Retirer `tp/solution/` avant de distribuer le squelette aux étudiants.
+- Le TP est dans `tp/` : guide élève dans `tp/GUIDE_ELEVES.md`, squelette dans `tp/src/`. La correction est sur la branche `correction`, dans `tp/correction/` (code complet, tests et `CORRIGE_TODO.md`).
