@@ -184,15 +184,15 @@
 <section>
 <h3>Qui fait quoi ?</h3>
 <table>
-<thead><tr><th>Rôle</th><th>Responsabilités</th><th>Ne fait pas</th></tr></thead>
+<thead><tr><th>Rôle</th><th>En une phrase</th><th>Exemple</th><th>Ce qu’il ne fait pas</th></tr></thead>
 <tbody>
-<tr><td>Hôte</td><td>Dialogue avec l’utilisateur et le LLM, agrège le contexte, applique les permissions et le consentement.</td><td>Parler MCP directement : il délègue à ses clients.</td></tr>
-<tr><td>Client MCP</td><td>Découvre les capacités d’un serveur, transmet les appels, reçoit résultats et notifications.</td><td>Décider quel outil appeler.</td></tr>
-<tr><td>Serveur MCP</td><td>Publie ses capacités, valide les entrées, exécute l’opération avec ses propres contrôles d’accès.</td><td>Voir la conversation ou piloter le modèle.</td></tr>
+<tr><td>Hôte</td><td>L’application de l’utilisateur : elle dialogue avec le LLM et autorise ou refuse chaque appel.</td><td>Claude Desktop, un IDE, l’agent Mastra<br><em>TP : Inspector</em></td><td>Exécuter l’outil</td></tr>
+<tr><td>Client MCP</td><td>Un connecteur intégré à l’hôte, un par serveur : il transporte les messages.</td><td>Le module MCP de l’hôte<br><em>TP : le client d’Inspector</em></td><td>Choisir l’outil à appeler</td></tr>
+<tr><td>Serveur MCP</td><td>Un programme qui publie des outils et les exécute avec ses propres contrôles.</td><td>Serveur GitHub, fichiers, SQL<br><em>TP : <code>node src/server.js</code></em></td><td>Voir la conversation ou piloter le modèle</td></tr>
 </tbody>
 </table>
-<p class="caption">La découverte ne confère aucun droit : l’hôte <strong>et</strong> le serveur contrôlent chacun de leur côté.</p>
-<aside class="notes">Point d’attention niveau master : la décision d’appeler un outil est prise par le LLM, mais la décision d’exécuter l’appel est prise par l’hôte. Ce découplage est ce qui permet le « human in the loop ».</aside>
+<p class="caption">Le LLM <strong>propose</strong> un appel → l’hôte l’<strong>autorise</strong> → le client le <strong>transmet</strong> → le serveur <strong>vérifie et exécute</strong>.</p>
+<aside class="notes">Le client n’est pas un programme séparé : c’est un composant de l’hôte, un par serveur connecté. La décision d’appeler un outil est prise par le LLM, mais la décision d’exécuter l’appel est prise par l’hôte : ce découplage est ce qui permet le « human in the loop » (confirmation avant une action sensible). Les contrôles sont doubles : l’hôte filtre ce que le modèle demande, le serveur vérifie ce qu’il reçoit, car découvrir un outil ne donne aucun droit. Dans le TP, Inspector joue à la fois l’hôte et le client, et il n’y a pas de LLM : c’est vous qui choisissez l’appel.</aside>
 </section>
 
 <section>
