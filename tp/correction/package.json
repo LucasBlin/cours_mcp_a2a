@@ -1,0 +1,12 @@
+{
+  "name": "tp-mcp-fichiers-correction",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Correction du TP. Utilise les dépendances installées dans le dossier parent (npm install dans tp/).",
+  "scripts": {
+    "start": "node src/server.js",
+    "inspect": "node ../scripts/inspecter.js src/server.js",
+    "test": "node --test tests/*.test.js"
+  }
+}

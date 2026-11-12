@@ -24,4 +24,4 @@ Ouvrir http://localhost:8001. Appuyer sur S pour les notes orateur. La présenta
 ## Avant la séance
 
 - Révisions de référence du contenu : MCP 2026-07-28, A2A 1.0, SDK TypeScript MCP v2 (`@modelcontextprotocol/server`). Vérifier qu'elles sont toujours courantes.
-- Le TP est dans `tp/` : guide élève dans `tp/GUIDE_ELEVES.md`, squelette dans `tp/src/`. La correction est sur la branche `correction`, dans `tp/correction/` (code complet, tests et `CORRIGE_TODO.md`).
+- Le TP est dans `tp/` : guide élève dans `tp/GUIDE_ELEVES.md`, squelette dans `tp/src/`. La correction est dans `tp/correction/` (code complet, tests et `CORRIGE_TODO.md`).
